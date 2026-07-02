@@ -14,11 +14,11 @@ multi-étapes et d'obtenir un code de suivi.
 - route : `src/app/candidature/page.tsx`
 
 ## Checklist (Definition of Done)
-- [ ] Formulaire multi-étapes avec navigation et validation par étape
-- [ ] Champs obligatoires validés côté client ET serveur (Zod)
-- [ ] Upload PDF uniquement, 2 Mo max (utiliser `shared/validation/file.ts`)
-- [ ] La liste des documents s'adapte au type de stage (`shared/constants/domain.ts`)
-- [ ] Création en base (statut `PENDING`) + upload Supabase (`shared/storage/supabase.ts`)
+- [x] Formulaire multi-étapes avec navigation et validation par étape
+- [x] Champs obligatoires validés côté client ET serveur (Zod)
+- [x] Upload PDF uniquement, 2 Mo max (utiliser `shared/validation/file.ts`)
+- [x] La liste des documents s'adapte au type de stage (`shared/constants/domain.ts`)
+- [x] Création en base (statut `PENDING`) + upload Supabase (`shared/storage/supabase.ts`)
 - [ ] Code de suivi non devinable, affiché à l'écran ET envoyé par email (Slice 4)
-- [ ] Toast de confirmation + skeleton de chargement
-- [ ] Utilisable sur mobile
+- [x] Toast de confirmation + skeleton de chargement
+- [x] Utilisable sur mobile

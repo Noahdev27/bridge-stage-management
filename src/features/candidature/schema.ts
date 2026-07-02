@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { InternshipType } from "@prisma/client";
 import { MIN_DURATION_MONTHS } from "@/shared/constants/domain";
 
@@ -7,10 +8,37 @@ import { MIN_DURATION_MONTHS } from "@/shared/constants/domain";
  * Réutilisés côté client (validation avant envoi) ET côté serveur (dans l'action).
  */
 
-// Expression régulière pour un numéro de téléphone camerounais valide à 9 chiffres (ex: 69XXXXXXX, 67XXXXXXX...)
-const cameroonPhoneRegex = /^6[5-9]\d{7}$/;
+function isValidInternationalPhone(value: string) {
+  const phoneNumber = parsePhoneNumberFromString(value);
+  return phoneNumber?.isValid() ?? false;
+}
 
-// ===== ÉTAPE 1 : Informations personnelles et contact =====
+const internationalPhoneSchema = z
+  .string()
+  .min(1, "Le numéro de téléphone est requis.")
+  .refine((value) => value.trim().startsWith("+"), {
+    message: "Le numéro doit commencer par l'indicatif international, ex. +237.",
+  })
+  .refine((value) => isValidInternationalPhone(value), {
+    message:
+      "Le numéro doit être un numéro international valide avec un indicatif pays.",
+  });
+
+// Variante FACULTATIVE : accepte un champ vide/absent, mais valide le format
+// si un numéro est saisi. Utilisée pour le 2ᵉ téléphone (non obligatoire).
+const optionalInternationalPhoneSchema = z
+  .string()
+  .trim()
+  .optional()
+  .refine((value) => !value || value.startsWith("+"), {
+    message: "Le numéro doit commencer par l'indicatif international, ex. +237.",
+  })
+  .refine((value) => !value || isValidInternationalPhone(value), {
+    message:
+      "Le numéro doit être un numéro international valide avec un indicatif pays.",
+  });
+
+// ===== ÉTAPE 1 : Informations personnelles =====
 export const step1InfosSchema = z.object({
   firstName: z
     .string()
@@ -25,13 +53,14 @@ export const step1InfosSchema = z.object({
     .min(1, "L'email est requis.")
     .email("Veuillez entrer une adresse email valide.")
     .max(255),
-  phone: z
-    .string()
-    .min(1, "Le numéro de téléphone est requis.")
-    .regex(
-      cameroonPhoneRegex,
-      "Le numéro doit être un numéro camerounais valide à 9 chiffres (ex: 6XXXXXXXX)."
-    ),
+  phone1: internationalPhoneSchema,
+  phone2: optionalInternationalPhoneSchema,
+});
+
+export type Step1InfosInput = z.infer<typeof step1InfosSchema>;
+
+// ===== ÉTAPE 2 : Parcours académique et paramètres du stage =====
+export const step2ParcoursSchema = z.object({
   school: z
     .string()
     .min(1, "L'école/université est requise.")
@@ -44,19 +73,13 @@ export const step1InfosSchema = z.object({
     .string()
     .min(1, "Le niveau d'étude est requis.")
     .max(100),
-});
-
-export type Step1InfosInput = z.infer<typeof step1InfosSchema>;
-
-// ===== ÉTAPE 2 : Paramètres du stage =====
-export const step2ParcoursSchema = z.object({
   internshipType: z.nativeEnum(InternshipType, {
     message: "Sélectionnez un type de stage valide.",
   }),
   duration: z
     .string()
     .min(1, "La durée est requise.")
-    .regex(/^\d+$/, "La durée doit être un nombre entier de mois."),
+    .regex(/^\d+$/, "La durée doit être un nombre de mois."),
   startDate: z
     .string()
     .refine(
@@ -98,15 +121,18 @@ export const step2ParcoursSchema = z.object({
 export type Step2ParcoursInput = z.infer<typeof step2ParcoursSchema>;
 
 // ===== ÉTAPE 3 : Upload de documents =====
-// Utilisation de z.any() ou z.custom() pour éviter les rejets stricts du constructeur File côté serveur de Next.js
+// Note : les fichiers seront validés dans le composant + dans l'action
 export const step3DocumentsSchema = z.record(
   z.string(),
-  z.any().optional()
+  z.instanceof(File).optional()
 );
 
 export type Step3DocumentsInput = z.infer<typeof step3DocumentsSchema>;
 
-// ===== SCHÉMA GLOBAL : complet de la candidature (fusion des étapes 1 et 2) =====
+// ===== ÉTAPE 4 : Récapitulatif (pas de validation supplémentaire) =====
+// Les données des étapes précédentes sont déjà validées
+
+// ===== SCHÉMA GLOBAL : complet de la candidature =====
 export const completeApplicationSchema = step1InfosSchema.merge(step2ParcoursSchema);
 
 export type CompleteApplicationInput = z.infer<typeof completeApplicationSchema>;

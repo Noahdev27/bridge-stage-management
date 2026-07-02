@@ -4,11 +4,21 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  // --- 1. MODIFIE CES VALEURS ---
-  const email = "itouayohann31@gmail.com"; 
-  const password = "lola1234"; 
-  // ------------------------------
-  
+  // Identifiants lus depuis l'environnement — NE JAMAIS committer de vrais
+  // identifiants en dur. Définir ADMIN_EMAIL et ADMIN_PASSWORD dans le .env
+  // (ex. `ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run db:seed:admin`).
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    throw new Error(
+      "ADMIN_EMAIL et ADMIN_PASSWORD doivent être définis dans le .env pour créer le compte admin."
+    );
+  }
+  if (password.length < 8) {
+    throw new Error("ADMIN_PASSWORD doit contenir au moins 8 caractères.");
+  }
+
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const admin = await prisma.user.upsert({

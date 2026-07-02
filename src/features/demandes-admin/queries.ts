@@ -1,13 +1,18 @@
-import { prisma } from "../../shared/db/prisma"; // Ajustement du chemin vers ton instance Prisma réelle
-import type { InternshipType } from "@prisma/client";
+import { prisma } from "@/shared/db/prisma";
+import { RequestStatus, type Prisma } from "@prisma/client";
 
 /**
  * Récupère toutes les candidatures filtrées par statut pour la table principale.
  */
 export async function getCandidatures(statusFilter?: string) {
   try {
-    const whereClause = statusFilter && statusFilter !== "ALL" 
-      ? { status: statusFilter as any } 
+    const isValidStatus =
+      !!statusFilter &&
+      statusFilter !== "ALL" &&
+      statusFilter in RequestStatus;
+
+    const whereClause: Prisma.InternshipRequestWhereInput = isValidStatus
+      ? { status: statusFilter as RequestStatus }
       : {};
 
     const candidatures = await prisma.internshipRequest.findMany({

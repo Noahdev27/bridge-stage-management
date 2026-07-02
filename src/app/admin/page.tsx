@@ -2,7 +2,7 @@ import { auth } from "@/shared/auth/auth";
 import { redirect } from "next/navigation";
 // Étape A : Correction de l'import vers le chemin réel constaté
 import { getCandidatures } from "@/features/demandes-admin/queries";
-import { StatusFilter } from "./components/StatusFilter";
+import { StatusFilter } from "@/features/demandes-admin/components/StatusFilter";
 import Link from "next/link";
 
 interface AdminPageProps {
@@ -66,8 +66,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 </td>
               </tr>
             ) : (
-              /* Étape B : Ajout du typage ': any' explicite sur 'cand' pour lever le blocage de build */
-              candidatures.map((cand: any) => (
+              candidatures.map((cand) => (
                 <tr key={cand.id} className="hover">
                   <td>
                     <div className="font-bold">{cand.firstName} {cand.lastName}</div>

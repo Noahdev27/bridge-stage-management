@@ -12,9 +12,6 @@ interface StepDocumentsProps {
   errors?: Record<string, string>;
 }
 
-// Règle de base stricte : 2 Mo maximum par fichier
-const MAX_FILE_SIZE = 2 * 1024 * 1024; 
-
 export function StepDocuments({
   internshipType,
   onFilesChange,
@@ -54,15 +51,7 @@ export function StepDocuments({
     const newErrors = { ...fileErrors };
 
     if (file) {
-      // 1. Validation stricte de la taille (2 Mo maximum)
-      if (file.size > MAX_FILE_SIZE) {
-        newErrors[docLabel] = "Ce fichier dépasse la taille maximale autorisée de 2 Mo.";
-        setFileErrors(newErrors);
-        e.target.value = ""; // Vide l'input sélectionné
-        return;
-      }
-
-      // 2. Validation du format PDF
+      // Valider le PDF
       const error = validatePdf(file);
       if (error) {
         newErrors[docLabel] = error;
@@ -72,7 +61,7 @@ export function StepDocuments({
       delete newErrors[docLabel];
     }
 
-    // Mettre à jour la Map des fichiers uploadés
+    // Mettre à jour les fichiers uploadés
     const newFiles = new Map(uploadedFiles);
     if (file) {
       newFiles.set(docLabel, file);

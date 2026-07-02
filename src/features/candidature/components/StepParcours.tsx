@@ -16,7 +16,80 @@ export function StepParcours({ data, onChange, errors = {} }: StepParcoursProps)
 
   return (
     <div className="flex flex-col gap-4">
-      
+      {/* École */}
+      <div className="form-control">
+        <label className="label">
+          <span className="label-text font-semibold">
+            École / Université <span className="text-error">*</span>
+          </span>
+        </label>
+        <input
+          type="text"
+          placeholder="Ex: Université Paris-Saclay"
+          className={`input input-bordered ${errors.school ? "input-error" : ""}`}
+          value={data.school || ""}
+          onChange={(e) => onChange("school", e.target.value)}
+          required
+        />
+        {errors.school && (
+          <label className="label">
+            <span className="label-text-alt text-error">{errors.school}</span>
+          </label>
+        )}
+      </div>
+
+      {/* Filière */}
+      <div className="form-control">
+        <label className="label">
+          <span className="label-text font-semibold">
+            Filière <span className="text-error">*</span>
+          </span>
+        </label>
+        <input
+          type="text"
+          placeholder="Ex: Informatique, Gestion, etc."
+          className={`input input-bordered ${errors.field ? "input-error" : ""}`}
+          value={data.field || ""}
+          onChange={(e) => onChange("field", e.target.value)}
+          required
+        />
+        {errors.field && (
+          <label className="label">
+            <span className="label-text-alt text-error">{errors.field}</span>
+          </label>
+        )}
+      </div>
+
+      {/* Niveau d'étude */}
+      <div className="form-control">
+        <label className="label">
+          <span className="label-text font-semibold">
+            Niveau d'étude <span className="text-error">*</span>
+          </span>
+        </label>
+        <select
+          className={`select select-bordered ${errors.level ? "select-error" : ""}`}
+          value={data.level || ""}
+          onChange={(e) => onChange("level", e.target.value)}
+          required
+        >
+          <option value="">-- Sélectionnez --</option>
+          <option value="L1">Licence 1</option>
+          <option value="L2">Licence 2</option>
+          <option value="L3">Licence 3</option>
+          <option value="M1">Master 1</option>
+          <option value="M2">Master 2</option>
+          <option value="BAC+3">BAC+3</option>
+          <option value="BAC+4">BAC+4</option>
+          <option value="BAC+5">BAC+5</option>
+        </select>
+        {errors.level && (
+          <label className="label">
+            <span className="label-text-alt text-error">{errors.level}</span>
+          </label>
+        )}
+      </div>
+
       {/* Type de stage */}
       <div className="form-control">
         <label className="label">
@@ -52,7 +125,6 @@ export function StepParcours({ data, onChange, errors = {} }: StepParcoursProps)
         )}
       </div>
 
-      {/* Alerte dynamique pour la durée minimale */}
       {internshipType && (
         <div className="alert alert-info">
           <svg
@@ -137,7 +209,6 @@ export function StepParcours({ data, onChange, errors = {} }: StepParcoursProps)
           />
         </label>
       </div>
-      
     </div>
   );
 }

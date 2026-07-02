@@ -9,42 +9,41 @@ interface StepInfosProps {
 }
 
 export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
-  // Liste propre et standardisée pour le recrutement
-  const studyLevels = [
-    "Licence 1",
-    "Licence 2",
-    "Licence 3 / Bachelor",
-    "Ingénieur 1ère année",
-    "Ingénieur 2ème année",
-    "Ingénieur 3ème année",
-    "Master 1",
-    "Master 2",
-  ];
-
   return (
     <div className="flex flex-col gap-4">
-      {/* --- PRÉNOM & NOM --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Prénom */}
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-semibold">Prénom <span className="text-error">*</span></span>
+            <span className="label-text font-semibold">
+              Prénom <span className="text-error">*</span>
+            </span>
           </label>
           <input
             type="text"
             placeholder="Votre prénom"
-            className={`input input-bordered ${errors.firstName ? "input-error" : ""}`}
+            className={`input input-bordered ${
+              errors.firstName ? "input-error" : ""
+            }`}
             value={data.firstName || ""}
             onChange={(e) => onChange("firstName", e.target.value)}
             required
           />
           {errors.firstName && (
-            <label className="label"><span className="label-text-alt text-error">{errors.firstName}</span></label>
+            <label className="label">
+              <span className="label-text-alt text-error">
+                {errors.firstName}
+              </span>
+            </label>
           )}
         </div>
 
+        {/* Nom */}
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-semibold">Nom <span className="text-error">*</span></span>
+            <span className="label-text font-semibold">
+              Nom <span className="text-error">*</span>
+            </span>
           </label>
           <input
             type="text"
@@ -55,15 +54,21 @@ export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
             required
           />
           {errors.lastName && (
-            <label className="label"><span className="label-text-alt text-error">{errors.lastName}</span></label>
+            <label className="label">
+              <span className="label-text-alt text-error">
+                {errors.lastName}
+              </span>
+            </label>
           )}
         </div>
       </div>
 
-      {/* --- EMAIL --- */}
+      {/* Email */}
       <div className="form-control">
         <label className="label">
-          <span className="label-text font-semibold">Email <span className="text-error">*</span></span>
+          <span className="label-text font-semibold">
+            Email <span className="text-error">*</span>
+          </span>
         </label>
         <input
           type="email"
@@ -74,91 +79,71 @@ export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
           required
         />
         {errors.email && (
-          <label className="label"><span className="label-text-alt text-error">{errors.email}</span></label>
+          <label className="label">
+            <span className="label-text-alt text-error">{errors.email}</span>
+          </label>
         )}
       </div>
 
-      {/* --- NUMÉRO DE TÉLÉPHONE (Standard unique Cameroun) --- */}
+      {/* Téléphone 1 */}
       <div className="form-control">
         <label className="label">
-          <span className="label-text font-semibold">Numéro de téléphone <span className="text-error">*</span></span>
+          <span className="label-text font-semibold">
+            Téléphone 1 <span className="text-error">*</span>
+          </span>
         </label>
         <input
           type="tel"
-          placeholder="Ex: 691234567"
-          className={`input input-bordered ${errors.phone ? "input-error" : ""}`}
-          value={data.phone || ""}
-          onChange={(e) => onChange("phone", e.target.value)}
+          placeholder="+237 6 71 23 45 67"
+          className={`input input-bordered ${errors.phone1 ? "input-error" : ""}`}
+          value={data.phone1 || ""}
+          onChange={(e) => onChange("phone1", e.target.value)}
           required
         />
-        <p className="text-xs text-base-content/50 mt-1">
-          Uniquement un numéro camerounais valide à 9 chiffres (ex: 69XXXXXXX, 67XXXXXXX).
-        </p>
-        {errors.phone && (
-          <label className="label"><span className="label-text-alt text-error">{errors.phone}</span></label>
+        {errors.phone1 && (
+          <label className="label">
+            <span className="label-text-alt text-error">{errors.phone1}</span>
+          </label>
         )}
       </div>
 
-      {/* --- ÉCOLE / UNIVERSITÉ --- */}
+      {/* Téléphone 2 */}
       <div className="form-control">
         <label className="label">
-          <span className="label-text font-semibold">École / Université <span className="text-error">*</span></span>
+          <span className="label-text font-semibold">
+            Téléphone 2{" "}
+            <span className="text-base-content/50 font-normal">(facultatif)</span>
+          </span>
         </label>
         <input
-          type="text"
-          placeholder="Ex: Ucac-Icam"
-          className={`input input-bordered ${errors.school ? "input-error" : ""}`}
-          value={data.school || ""}
-          onChange={(e) => onChange("school", e.target.value)}
-          required
+          type="tel"
+          placeholder="+237 6 90 12 34 56"
+          className={`input input-bordered ${errors.phone2 ? "input-error" : ""}`}
+          value={data.phone2 || ""}
+          onChange={(e) => onChange("phone2", e.target.value)}
         />
-        {errors.school && (
-          <label className="label"><span className="label-text-alt text-error">{errors.school}</span></label>
+        {errors.phone2 && (
+          <label className="label">
+            <span className="label-text-alt text-error">{errors.phone2}</span>
+          </label>
         )}
       </div>
 
-      {/* --- FILIÈRE & NIVEAU D'ÉTUDES --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-semibold">Filière <span className="text-error">*</span></span>
-          </label>
-          <input
-            type="text"
-            placeholder="Ex: Informatique / Réseaux"
-            className={`input input-bordered ${errors.field ? "input-error" : ""}`}
-            value={data.field || ""}
-            onChange={(e) => onChange("field", e.target.value)}
-            required
-          />
-          {errors.field && (
-            <label className="label"><span className="label-text-alt text-error">{errors.field}</span></label>
-          )}
-        </div>
-
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-semibold">Niveau d'études <span className="text-error">*</span></span>
-          </label>
-          <select
-            className={`select select-bordered w-full ${errors.level ? "select-error" : ""}`}
-            value={data.level || ""}
-            onChange={(e) => onChange("level", e.target.value)}
-            required
-          >
-            <option value="" disabled>
-              Sélectionnez votre niveau
-            </option>
-            {studyLevels.map((level) => (
-              <option key={level} value={level}>
-                {level}
-              </option>
-            ))}
-          </select>
-          {errors.level && (
-            <label className="label"><span className="label-text-alt text-error">{errors.level}</span></label>
-          )}
-        </div>
+      <div className="alert alert-info">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          className="stroke-current shrink-0 w-6 h-6"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          ></path>
+        </svg>
+        <span>Le Téléphone 1 est obligatoire. Le Téléphone 2 est facultatif — s'il est renseigné, il doit être au format international valide (ex. +237…).</span>
       </div>
     </div>
   );
