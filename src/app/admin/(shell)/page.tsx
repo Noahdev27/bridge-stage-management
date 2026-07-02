@@ -34,14 +34,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   return (
     <main className="p-6 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Espace Recrutement RH</h1>
-          <p className="text-base-content/60 mt-1">Suivi et traitement des demandes de stage Bridges Technologies.</p>
-        </div>
-        <div className="text-sm text-base-content/50 bg-base-200 px-3 py-1.5 rounded-lg font-mono">
-          Connecté : {session.user?.email}
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">Demandes de stage</h1>
+        <p className="text-base-content/60 mt-1">
+          Suivi et traitement des candidatures Bridge Technologies Solutions.
+        </p>
       </div>
 
       {/* Barre de filtrage par onglets */}
