@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/shared/db/prisma";
 import { uploadDocument } from "@/shared/storage/supabase";
 import { validatePdf } from "@/shared/validation/file";
+import { REQUIRED_DOCUMENTS } from "@/shared/constants/domain";
 import { completeApplicationSchema } from "./schema";
 import { notifySubmission } from "@/features/notifications/actions/send-notification";
 import { randomBytes } from "crypto";
@@ -25,18 +26,16 @@ export type ActionState = {
  * Format : 8 caractères alphanumériques en majuscules (ex: A7B2K9M1)
  */
 function generateTrackingCode(): string {
-  return randomBytes(4)
-    .toString("hex")
-    .toUpperCase()
-    .substring(0, 8);
+  return randomBytes(4).toString("hex").toUpperCase().substring(0, 8);
 }
 
 /**
  * Server Action : crée une candidature complète.
  * 1. Valide les données (Zod)
- * 2. Upload les fichiers sur Supabase
- * 3. Crée Profile + InternshipRequest + Document[] en base
- * 4. Retourne le code de suivi ou une erreur
+ * 2. Vérifie la composition du dossier selon le type de stage
+ * 3. Upload les fichiers sur Supabase
+ * 4. Crée Profile + InternshipRequest + Document[] en une transaction
+ * 5. Notifie le candidat et retourne le code de suivi
  */
 export async function submitCandidature(
   _prev: ActionState,
@@ -48,9 +47,10 @@ export async function submitCandidature(
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
       email: formData.get("email"),
-      phone1: formData.get("phone1"),
-      // Téléphone 2 facultatif : null (champ absent) -> undefined pour le schéma optionnel.
-      phone2: formData.get("phone2") || undefined,
+      phone: formData.get("phone"),
+      lieudit: formData.get("lieudit"),
+      relativePhone1: formData.get("relativePhone1"),
+      relativePhone2: formData.get("relativePhone2"),
       school: formData.get("school"),
       field: formData.get("field"),
       level: formData.get("level"),
@@ -68,101 +68,84 @@ export async function submitCandidature(
     const data = parsed.data;
     const internshipType = data.internshipType as InternshipType;
 
-    // ===== 2. Validation et upload des documents =====
-    const uploadedDocuments: { label: string; url: string }[] = [];
-
-    // Parcourir tous les champs du FormData pour trouver les fichiers uploadés
+    // ===== 2. Récupérer les fichiers du FormData (PDF only, 2 Mo max) =====
+    const files: { label: string; file: File }[] = [];
     for (const [key, value] of formData.entries()) {
       if (key.startsWith("documents_") && value instanceof File && value.size > 0) {
-        // Extraire le label du document depuis la clé (ex: "documents_CV à jour" -> "CV à jour")
-        const label = key
-          .substring("documents_".length)
-          .split("_")
-          .slice(0, -1)
-          .join(" ");
+        // La clé encode le libellé (espaces -> "_") : on le décode.
+        const label = key.substring("documents_".length).replace(/_/g, " ");
 
-        // Valider le PDF
         const validationError = validatePdf(value);
         if (validationError) {
-          return { error: validationError };
+          return { error: `${label} : ${validationError}` };
         }
-
-        // Upload sur Supabase (sera organisé par requestId une fois créé)
-        try {
-          const url = await uploadDocument(value, "temp");
-          uploadedDocuments.push({ label: label || value.name, url });
-        } catch (uploadError) {
-          console.error("[candidature] Upload error:", uploadError);
-          return {
-            error: `Erreur lors de l'upload du fichier. Veuillez réessayer.`,
-          };
-        }
+        files.push({ label, file: value });
       }
     }
 
-    // Vérifier qu'au moins un document a été uploadé
-    if (uploadedDocuments.length === 0) {
+    // ===== 3. Vérifier la COMPOSITION du dossier selon le type (serveur) =====
+    const requiredDocs = REQUIRED_DOCUMENTS[internshipType];
+    const providedLabels = new Set(files.map((f) => f.label));
+    const missing = requiredDocs.filter((doc) => !providedLabels.has(doc));
+    if (missing.length > 0) {
       return {
-        error: "Au moins un document doit être uploadé.",
+        error: `Documents manquants pour ce type de stage : ${missing.join(", ")}.`,
       };
     }
 
-    // ===== 3. Créer le profil + demande + documents en base =====
+    // ===== 4. Upload des fichiers sur Supabase (dossier complet garanti) =====
+    const uploadedDocuments: { label: string; url: string }[] = [];
+    try {
+      for (const { label, file } of files) {
+        const url = await uploadDocument(file, "candidatures");
+        uploadedDocuments.push({ label, url });
+      }
+    } catch (uploadError) {
+      console.error("[candidature] Upload error:", uploadError);
+      return { error: "Erreur lors de l'upload d'un fichier. Veuillez réessayer." };
+    }
+
+    // ===== 5. Créer profil + demande + documents en une TRANSACTION =====
     const trackingCode = generateTrackingCode();
     const startDate = new Date(data.startDate);
 
     try {
-      // Créer le profil du candidat
-      const profile = await prisma.profile.create({
-        data: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone1,
-          school: data.school,
-          field: data.field,
-          level: data.level,
-        },
-      });
+      await prisma.$transaction(async (tx) => {
+        const profile = await tx.profile.create({
+          data: {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email,
+            phone: data.phone,
+            lieudit: data.lieudit,
+            relativePhone1: data.relativePhone1,
+            relativePhone2: data.relativePhone2,
+            school: data.school,
+            field: data.field,
+            level: data.level,
+          },
+        });
 
-      // Créer la demande de stage
-      const internshipRequest = await prisma.internshipRequest.create({
-        data: {
-          trackingCode,
-          type: internshipType,
-          duration: data.duration,
-          startDate,
-          reportRequired: data.reportRequired,
-          status: "PENDING",
-          profileId: profile.id,
-        },
-      });
+        const internshipRequest = await tx.internshipRequest.create({
+          data: {
+            trackingCode,
+            type: internshipType,
+            duration: data.duration,
+            startDate,
+            reportRequired: data.reportRequired,
+            status: "PENDING",
+            profileId: profile.id,
+          },
+        });
 
-      // Créer les documents associés
-      if (uploadedDocuments.length > 0) {
-        await prisma.document.createMany({
+        await tx.document.createMany({
           data: uploadedDocuments.map((doc) => ({
             label: doc.label,
             url: doc.url,
             requestId: internshipRequest.id,
           })),
         });
-      }
-
-      // ===== 4. Notifier le candidat (email non bloquant) =====
-      await notifySubmission(
-        profile.email,
-        `${profile.firstName} ${profile.lastName}`,
-        trackingCode
-      );
-
-      // ===== 5. Revalider et retourner le code de suivi =====
-      revalidatePath("/candidature");
-
-      return {
-        success: true,
-        trackingCode,
-      };
+      });
     } catch (dbError) {
       console.error("[candidature] Erreur base de données:", dbError);
       return {
@@ -170,10 +153,19 @@ export async function submitCandidature(
           "Une erreur est survenue lors de la création de votre demande. Veuillez réessayer.",
       };
     }
+
+    // ===== 6. Notifier le candidat (email non bloquant) + retour =====
+    await notifySubmission(
+      data.email,
+      `${data.firstName} ${data.lastName}`,
+      trackingCode
+    );
+
+    revalidatePath("/candidature");
+
+    return { success: true, trackingCode };
   } catch (error) {
     console.error("[candidature] Erreur serveur:", error);
-    return {
-      error: "Erreur serveur. Veuillez réessayer plus tard.",
-    };
+    return { error: "Erreur serveur. Veuillez réessayer plus tard." };
   }
 }

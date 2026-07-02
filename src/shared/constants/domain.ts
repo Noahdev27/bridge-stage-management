@@ -40,6 +40,7 @@ export const REQUIRED_DOCUMENTS: Record<InternshipType, string[]> = {
     "CV à jour",
     "Certificat de scolarité ou lettre de recommandation de l'école",
     "Pièce d'identité",
+    "Plan de localisation",
   ],
   PROFESSIONAL: [
     "Lettre de motivation manuscrite",
@@ -47,6 +48,7 @@ export const REQUIRED_DOCUMENTS: Record<InternshipType, string[]> = {
     "Dernier diplôme",
     "Autres formations ou certifications",
     "Pièce d'identité",
+    "Plan de localisation",
   ],
 };
 

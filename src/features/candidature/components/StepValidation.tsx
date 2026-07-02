@@ -42,15 +42,21 @@ export function StepValidation({
               <span>{step1.email}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-base-300">
-              <span className="font-semibold">Téléphone 1 :</span>
-              <span>{step1.phone1}</span>
+              <span className="font-semibold">Téléphone :</span>
+              <span>{step1.phone}</span>
             </div>
-            {step1.phone2 && (
-              <div className="flex justify-between py-1">
-                <span className="font-semibold">Téléphone 2 :</span>
-                <span>{step1.phone2}</span>
-              </div>
-            )}
+            <div className="flex justify-between py-1 border-b border-base-300">
+              <span className="font-semibold">Domicile (lieu-dit) :</span>
+              <span>{step1.lieudit}</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-base-300">
+              <span className="font-semibold">Proche 1 :</span>
+              <span>{step1.relativePhone1}</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="font-semibold">Proche 2 :</span>
+              <span>{step1.relativePhone2}</span>
+            </div>
           </div>
         </div>
       </div>

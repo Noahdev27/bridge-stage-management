@@ -24,20 +24,6 @@ const internationalPhoneSchema = z
       "Le numéro doit être un numéro international valide avec un indicatif pays.",
   });
 
-// Variante FACULTATIVE : accepte un champ vide/absent, mais valide le format
-// si un numéro est saisi. Utilisée pour le 2ᵉ téléphone (non obligatoire).
-const optionalInternationalPhoneSchema = z
-  .string()
-  .trim()
-  .optional()
-  .refine((value) => !value || value.startsWith("+"), {
-    message: "Le numéro doit commencer par l'indicatif international, ex. +237.",
-  })
-  .refine((value) => !value || isValidInternationalPhone(value), {
-    message:
-      "Le numéro doit être un numéro international valide avec un indicatif pays.",
-  });
-
 // ===== ÉTAPE 1 : Informations personnelles =====
 export const step1InfosSchema = z.object({
   firstName: z
@@ -53,8 +39,17 @@ export const step1InfosSchema = z.object({
     .min(1, "L'email est requis.")
     .email("Veuillez entrer une adresse email valide.")
     .max(255),
-  phone1: internationalPhoneSchema,
-  phone2: optionalInternationalPhoneSchema,
+  // Téléphone du candidat
+  phone: internationalPhoneSchema,
+  // Domicile : lieu-dit (la localisation GPS est fournie via le document
+  // « Plan de localisation » à l'étape Documents).
+  lieudit: z
+    .string()
+    .min(1, "Le lieu-dit (domicile) est requis.")
+    .max(255),
+  // Téléphones de deux proches du candidat
+  relativePhone1: internationalPhoneSchema,
+  relativePhone2: internationalPhoneSchema,
 });
 
 export type Step1InfosInput = z.infer<typeof step1InfosSchema>;
