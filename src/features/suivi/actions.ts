@@ -8,9 +8,11 @@ export type SuiviActionState = {
   success?: boolean;
   candidature?: {
     id: string;
+    trackingCode: string;
     status: "PENDING" | "PROCESS" | "ACCEPTED" | "REJECTED";
     type: string;
     createdAt: Date;
+    startDate: Date;
     duration: string;
     profile: {
       firstName: string;
@@ -53,9 +55,11 @@ export async function checkTrackingStatus(
       success: true,
       candidature: {
         id: candidature.id,
+        trackingCode: candidature.trackingCode,
         status: candidature.status,
         type: candidature.type,
         createdAt: candidature.createdAt,
+        startDate: candidature.startDate,
         duration: candidature.duration,
         profile: {
           firstName: candidature.profile.firstName,
