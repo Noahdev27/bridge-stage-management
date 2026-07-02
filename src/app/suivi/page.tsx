@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { checkTrackingStatus, SuiviActionState } from "@/features/suivi/actions";
 import { StatusBadge } from "@/shared/ui/StatusBadge";
 import Link from "next/link";
+import { ArrowLeft, GraduationCap, Briefcase, AlertTriangle } from "lucide-react";
 
 const initialState: SuiviActionState = {
   error: undefined,
@@ -21,8 +22,9 @@ export default function SuiviPage() {
         
         {/* En-tête / Retour d'accueil */}
         <div className="text-center">
-          <Link href="/" className="text-sm link link-hover text-primary font-medium">
-            ← Retour à l'accueil
+          <Link href="/" className="text-sm link link-hover text-primary font-medium inline-flex items-center gap-1">
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            Retour à l'accueil
           </Link>
           <h1 className="text-3xl font-bold tracking-tight mt-3 text-base-content">
             Suivre ma Candidature
@@ -67,7 +69,8 @@ export default function SuiviPage() {
               {/* Affichage des erreurs de validation ou de base de données */}
               {state?.error && (
                 <div className="alert alert-error text-sm py-2 px-3 mt-2 rounded-lg text-white font-medium">
-                  ⚠️ {state.error}
+                  <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  {state.error}
                 </div>
               )}
             </form>
@@ -93,8 +96,13 @@ export default function SuiviPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-base-content/50">Type de stage :</span>
-                  <span className="font-semibold">
-                    {state.candidature.type === "ACADEMIC" ? "🎓 Académique" : "💼 Professionnel"}
+                  <span className="inline-flex items-center gap-1.5 font-semibold">
+                    {state.candidature.type === "ACADEMIC" ? (
+                      <GraduationCap className="w-4 h-4 text-primary" aria-hidden="true" />
+                    ) : (
+                      <Briefcase className="w-4 h-4 text-primary" aria-hidden="true" />
+                    )}
+                    {state.candidature.type === "ACADEMIC" ? "Académique" : "Professionnel"}
                   </span>
                 </div>
                 <div className="flex justify-between">

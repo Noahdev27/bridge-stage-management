@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getCandidatures } from "@/features/demandes-admin/queries";
 import { StatusFilter } from "@/features/demandes-admin/components/StatusFilter";
 import Link from "next/link";
+import { GraduationCap, Briefcase, ArrowRight } from "lucide-react";
 
 interface AdminPageProps {
   searchParams: Promise<{ status?: string }>;
@@ -72,8 +73,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <div className="font-bold">{cand.firstName} {cand.lastName}</div>
                   </td>
                   <td>
-                    <span className="font-medium">
-                      {cand.internshipType === "ACADEMIC" ? "🎓 Académique" : "💼 Professionnel"}
+                    <span className="inline-flex items-center gap-1.5 font-medium">
+                      {cand.internshipType === "ACADEMIC" ? (
+                        <GraduationCap className="w-4 h-4 text-primary" aria-hidden="true" />
+                      ) : (
+                        <Briefcase className="w-4 h-4 text-primary" aria-hidden="true" />
+                      )}
+                      {cand.internshipType === "ACADEMIC" ? "Académique" : "Professionnel"}
                     </span>
                   </td>
                   <td className="text-sm text-base-content/70">
@@ -89,11 +95,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     </span>
                   </td>
                   <td className="text-right">
-                    <Link 
-                      href={`/admin/${cand.id}`} 
-                      className="btn btn-sm btn-ghost text-primary hover:bg-primary/10"
+                    <Link
+                      href={`/admin/${cand.id}`}
+                      className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-1"
                     >
-                      Voir le dossier →
+                      Voir le dossier
+                      <ArrowRight className="w-4 h-4" aria-hidden="true" />
                     </Link>
                   </td>
                 </tr>

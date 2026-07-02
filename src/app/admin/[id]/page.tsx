@@ -2,6 +2,15 @@ import { getCandidatureById } from "@/features/demandes-admin/queries";
 import { updateCandidatureStatus } from "@/features/demandes-admin/actions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import {
+  ArrowLeft,
+  GraduationCap,
+  Briefcase,
+  Settings2,
+  Check,
+  X,
+  FileText,
+} from "lucide-react";
 
 interface DetailAdminPageProps {
   params: Promise<{ id: string }>;
@@ -16,8 +25,9 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
       <main className="p-6 max-w-4xl mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-error">Dossier introuvable</h1>
         <p className="text-base-content/60 mt-2">La candidature demandée n'existe pas ou a été supprimée.</p>
-        <Link href="/admin" className="btn btn-primary mt-6">
-          ← Retourner à la liste
+        <Link href="/admin" className="btn btn-primary mt-6 gap-2">
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          Retourner à la liste
         </Link>
       </main>
     );
@@ -49,8 +59,9 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
     <main className="p-6 max-w-4xl mx-auto">
       {/* Fil d'Ariane / Retour */}
       <div className="mb-6">
-        <Link href="/admin" className="text-sm link link-hover text-primary font-medium flex items-center gap-1">
-          ← Retour à l'Espace Recrutement
+        <Link href="/admin" className="text-sm link link-hover text-primary font-medium inline-flex items-center gap-1">
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          Retour à l'Espace Recrutement
         </Link>
       </div>
 
@@ -65,8 +76,17 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
               {status}
             </span>
           </div>
-          <p className="text-base-content/60 mt-1">
-            Demande de stage {type === "ACADEMIC" ? "🎓 Académique" : "💼 Professionnel"} — Soumis le{" "}
+          <p className="text-base-content/60 mt-1 inline-flex items-center gap-1.5 flex-wrap">
+            Demande de stage
+            {type === "ACADEMIC" ? (
+              <GraduationCap className="w-4 h-4 text-primary" aria-hidden="true" />
+            ) : (
+              <Briefcase className="w-4 h-4 text-primary" aria-hidden="true" />
+            )}
+            <span className="font-medium text-base-content/80">
+              {type === "ACADEMIC" ? "Académique" : "Professionnel"}
+            </span>
+            — Soumis le{" "}
             {new Date(createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
@@ -74,18 +94,21 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
         {/* Barre d'actions RH rapide */}
         <form action={handleStatusChange} className="flex gap-2 flex-wrap">
           {status !== "PROCESS" && status !== "ACCEPTED" && status !== "REJECTED" && (
-            <button type="submit" name="status" value="PROCESS" className="btn btn-sm btn-info text-white">
-              ⚙️ Traiter
+            <button type="submit" name="status" value="PROCESS" className="btn btn-sm btn-info text-white gap-1.5">
+              <Settings2 className="w-4 h-4" aria-hidden="true" />
+              Traiter
             </button>
           )}
           {status !== "ACCEPTED" && (
-            <button type="submit" name="status" value="ACCEPTED" className="btn btn-sm btn-success text-white">
-              ✓ Accepter
+            <button type="submit" name="status" value="ACCEPTED" className="btn btn-sm btn-success text-white gap-1.5">
+              <Check className="w-4 h-4" aria-hidden="true" />
+              Accepter
             </button>
           )}
           {status !== "REJECTED" && (
-            <button type="submit" name="status" value="REJECTED" className="btn btn-sm btn-error text-white">
-              ✕ Refuser
+            <button type="submit" name="status" value="REJECTED" className="btn btn-sm btn-error text-white gap-1.5">
+              <X className="w-4 h-4" aria-hidden="true" />
+              Refuser
             </button>
           )}
         </form>
@@ -146,11 +169,12 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
                       rel="noopener noreferrer"
                       className="flex items-center justify-between p-3 rounded-lg border border-base-200 bg-base-200/30 hover:bg-base-200 hover:border-base-300 transition-all text-sm group"
                     >
-                      <span className="font-medium text-base-content/80 truncate max-w-[180px]">
-                        📄 {doc.label}
+                      <span className="inline-flex items-center gap-1.5 font-medium text-base-content/80 truncate max-w-[180px]">
+                        <FileText className="w-4 h-4 shrink-0 text-primary" aria-hidden="true" />
+                        <span className="truncate">{doc.label}</span>
                       </span>
                       <span className="text-xs text-primary font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                        Ouvrir →
+                        Ouvrir
                       </span>
                     </a>
                   ))}
