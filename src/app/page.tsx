@@ -1,106 +1,143 @@
 import Image from "next/image";
 import Link from "next/link";
+import {
+  FileText,
+  Search,
+  Paperclip,
+  KeyRound,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
+
+const STEPS = [
+  {
+    icon: FileText,
+    title: "Je remplis le formulaire",
+    description: "Informations personnelles, parcours et projet de stage.",
+  },
+  {
+    icon: Paperclip,
+    title: "Je joins mes documents",
+    description: "CV, lettre de motivation et pièces requises, au format PDF.",
+  },
+  {
+    icon: KeyRound,
+    title: "Je reçois mon code de suivi",
+    description: "Un code unique pour consulter l'état de mon dossier.",
+  },
+  {
+    icon: Mail,
+    title: "Je suis informé(e) par email",
+    description: "Une notification à chaque étape du traitement.",
+  },
+];
 
 export default function Home() {
   return (
-    // 1. Conteneur principal avec "relative overflow-hidden" pour retenir les bulles
-    <main className="relative min-h-screen overflow-hidden bg-base-100">
-      
-      {/* --- ANIMATIONS CSS POUR LES BULLES PLUS INTENSES --- */}
+    <main className="relative min-h-dvh overflow-hidden bg-base-100">
+      {/* Halo décoratif — teintes de marque, discret, respecte prefers-reduced-motion */}
       <style>{`
-        @keyframes blobOne {
-          0%, 100% { transform: scale(1); opacity: 0; }
-          30% { transform: scale(1.3); opacity: 0.7; }  /* Intensité augmentée à 70% */
-          60% { transform: scale(0.9); opacity: 0; }
+        @keyframes bridgeGlowA {
+          0%, 100% { transform: scale(1); opacity: 0.35; }
+          50% { transform: scale(1.15); opacity: 0.5; }
         }
-        @keyframes blobTwo {
-          0%, 100% { transform: scale(0.9); opacity: 0; }
-          40% { transform: scale(0.9); opacity: 0; }
-          75% { transform: scale(1.4); opacity: 0.65; } /* Intensité augmentée à 65% */
+        @keyframes bridgeGlowB {
+          0%, 100% { transform: scale(1.1); opacity: 0.3; }
+          50% { transform: scale(0.95); opacity: 0.45; }
         }
-        .animate-blob-1 { animation: blobOne 12s infinite ease-in-out; }
-        .animate-blob-2 { animation: blobTwo 12s infinite ease-in-out; }
+        .animate-glow-a { animation: bridgeGlowA 14s infinite ease-in-out; }
+        .animate-glow-b { animation: bridgeGlowB 14s infinite ease-in-out 1s; }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-glow-a, .animate-glow-b { animation: none; }
+        }
       `}</style>
 
-      {/* --- LES BULLES BLEUES ET CYAN EN ARRIÈRE-PLAN --- */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        {/* Première bulle - Flou réduit à 60px pour concentrer le bleu Bridge */}
-        <div className="absolute top-[20%] left-[10%] w-80 h-80 bg-blue-600 rounded-full filter blur-[60px] animate-blob-1"></div>
-        
-        {/* Deuxième bulle - Flou réduit à 70px pour le Cyan */}
-        <div className="absolute bottom-[25%] right-[10%] w-96 h-96 bg-cyan-500 rounded-full filter blur-[70px] animate-blob-2"></div>
+      <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
+        <div className="absolute top-[15%] left-[8%] w-72 h-72 sm:w-96 sm:h-96 bg-primary rounded-full blur-[90px] animate-glow-a" />
+        <div className="absolute bottom-[20%] right-[8%] w-64 h-64 sm:w-80 sm:h-80 bg-accent rounded-full blur-[90px] animate-glow-b" />
       </div>
 
-      {/* --- CONTENU VISUEL SURÉLEVÉ PAR LE Z-10 --- */}
-      <div className="relative z-10 flex flex-col min-h-screen justify-between">
-        
-        <div>
-          {/* En-tête */}
-          <header className="navbar bg-base-100/80 backdrop-blur-md border-b border-base-300 px-4 sm:px-8">
-            <div className="flex-1">
-              <Image
-                src="/logo-bridge.png"
-                alt="Bridge Technologies Solutions"
-                width={150}
-                height={48}
-                priority
-                className="h-10 w-auto"
-              />
-            </div>
-            <div className="flex-none">
-              <Link href="/admin" className="btn btn-ghost btn-sm text-secondary font-semibold">
-                Espace RH
-              </Link>
-            </div>
-          </header>
+      <div className="relative z-10 flex flex-col min-h-dvh">
+        {/* En-tête : uniquement le logo — aucune entrée admin sur la page publique */}
+        <header className="navbar bg-base-100/80 backdrop-blur-md border-b border-base-300 px-4 sm:px-8">
+          <div className="flex-1">
+            <Image
+              src="/logo-bridge.png"
+              alt="Bridge Technologies Solutions"
+              width={150}
+              height={48}
+              priority
+              className="h-9 sm:h-10 w-auto"
+            />
+          </div>
+        </header>
 
-          {/* Hero (Transparent pour laisser passer les superbes lueurs) */}
-          <section className="hero bg-transparent py-20">
-            <div className="hero-content text-center">
-              <div className="max-w-2xl">
-                <h1 className="text-4xl sm:text-5xl font-bold text-secondary">
-                  Gérez vos demandes de stage en toute simplicité
-                </h1>
-                <p className="py-6 text-base-content/70 text-lg">
-                  Postulez à un stage académique ou professionnel, suivez votre
-                  dossier en temps réel, et laissez notre équipe vous accompagner.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link href="/candidature" className="btn btn-primary btn-lg">
-                    Déposer ma candidature
-                  </Link>
-                  <Link href="/suivi" className="btn btn-outline btn-lg">
-                    Suivre ma demande
-                  </Link>
-                </div>
+        <div className="flex-1 flex flex-col">
+          {/* Hero */}
+          <section className="py-20 sm:py-28 px-4">
+            <div className="max-w-2xl mx-auto text-center">
+              <h1 className="text-4xl sm:text-5xl font-bold text-secondary tracking-tight text-balance">
+                Gérez vos demandes de stage en toute simplicité
+              </h1>
+              <p className="mt-5 text-base-content/70 text-lg text-balance">
+                Postulez à un stage académique ou professionnel, suivez votre
+                dossier en temps réel, et laissez notre équipe vous accompagner.
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+                <Link href="/candidature" className="btn btn-primary btn-lg gap-2">
+                  <FileText className="w-5 h-5" aria-hidden="true" />
+                  Déposer ma candidature
+                </Link>
+                <Link href="/suivi" className="btn btn-outline btn-lg gap-2">
+                  <Search className="w-5 h-5" aria-hidden="true" />
+                  Suivre ma demande
+                </Link>
               </div>
             </div>
           </section>
 
-          {/* Étapes */}
-          <section className="py-16 px-4 max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold text-center text-secondary mb-10">
-              Comment ça marche ?
-            </h2>
-            <ul className="steps steps-vertical sm:steps-horizontal w-full">
-              <li className="step step-primary">Je remplis le formulaire</li>
-              <li className="step step-primary">Je joins mes documents</li>
-              <li className="step">Je reçois mon code de suivi</li>
-              <li className="step">Je suis informé(e) par email</li>
-            </ul>
+          {/* Comment ça marche */}
+          <section className="py-16 px-4">
+            <div className="max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-center text-secondary mb-12">
+                Comment ça marche ?
+              </h2>
+              <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {STEPS.map(({ icon: Icon, title, description }, i) => (
+                  <li key={title} className="relative">
+                    <div className="flex flex-col items-center text-center gap-3 rounded-box border border-base-300 bg-base-100 p-6 h-full">
+                      <span className="grid place-items-center w-12 h-12 rounded-full bg-primary/10 text-primary">
+                        <Icon className="w-5 h-5" aria-hidden="true" />
+                      </span>
+                      <span className="text-xs font-semibold text-primary tabular-nums">
+                        Étape {i + 1}
+                      </span>
+                      <h3 className="font-semibold text-base-content">{title}</h3>
+                      <p className="text-sm text-base-content/60">{description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </section>
         </div>
 
         {/* Pied de page */}
-        <footer className="footer footer-center bg-secondary text-secondary-content p-6">
+        <footer className="footer footer-center bg-secondary text-secondary-content p-6 gap-2">
           <aside>
             <p className="font-medium">Bridge Technologies Solutions</p>
-            <p className="text-sm opacity-80">
-              We drive your digital transformation
-            </p>
+            <p className="text-sm opacity-80">We drive your digital transformation</p>
           </aside>
+          <nav>
+            <Link
+              href="/admin/login"
+              className="inline-flex items-center gap-1 text-xs opacity-50 hover:opacity-90 transition-opacity"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+              Espace RH
+            </Link>
+          </nav>
         </footer>
-
       </div>
     </main>
   );
