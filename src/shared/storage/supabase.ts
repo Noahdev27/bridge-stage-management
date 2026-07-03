@@ -27,15 +27,42 @@ export const DOCUMENTS_BUCKET = storageBucketName;
 /**
  * Téléverse un fichier PDF dans Supabase Storage et renvoie une URL de
  * lecture signée (bucket privé — documents candidats sensibles / RGPD).
- * @param file       Le fichier à téléverser (déjà validé : PDF, <= 2 Mo).
- * @param pathPrefix Dossier logique (ex. l'id de la demande).
+ *
+ * Le fichier est rangé sous `folderPath/nom-du-document.pdf` : le nom vient
+ * du LIBELLÉ du document (ex. "CV à jour"), pas du nom de fichier fourni par
+ * le candidat, pour que le classement reste lisible et prévisible.
+ *
+ * @param file         Le fichier à téléverser (déjà validé : PDF, <= 2 Mo).
+ * @param folderPath   Dossier de destination (ex. "candidatures/2026/07/A7B2K9M1").
+ * @param fileNameHint Nom lisible pour le fichier (ex. le libellé du document).
  */
-export async function uploadDocument(file: File, pathPrefix: string): Promise<string> {
-  const safeFileName = file.name.replace(/\s+/g, "_");
-  const path = `${pathPrefix}/${Date.now()}-${safeFileName}`;
+export async function uploadDocument(
+  file: File,
+  folderPath: string,
+  fileNameHint: string
+): Promise<string> {
+  // Extension prise sur le fichier d'origine, assainie (jamais de traversée
+  // de chemin ni de caractère spécial — le nom du client n'est pas fiable).
+  const rawExtension = file.name.split(".").pop() ?? "pdf";
+  const extension = rawExtension.replace(/[^a-z0-9]/gi, "").toLowerCase() || "pdf";
+
+  // Décompose les accents (NFD) puis ne garde que des caractères alphanumériques :
+  // "CV à jour" -> "cv-a-jour". Les runs non-alphanumériques (accents, espaces,
+  // apostrophes...) sont naturellement fusionnés en un seul "-".
+  const safeFileName =
+    fileNameHint
+      .normalize("NFD")
+      .replace(/[^A-Za-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "document";
+
+  const path = `${folderPath}/${safeFileName}.${extension}`;
+
   const { error: uploadError } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
-    .upload(path, file, { contentType: file.type || "application/pdf", upsert: false });
+    // Le type MIME du client n'est pas fiable : on impose "application/pdf",
+    // déjà garanti par validatePdf() en amont.
+    .upload(path, file, { contentType: "application/pdf", upsert: false });
 
   if (uploadError) throw new Error(`Échec de l'upload : ${uploadError.message}`);
 

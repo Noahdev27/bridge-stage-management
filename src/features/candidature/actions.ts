@@ -93,11 +93,18 @@ export async function submitCandidature(
       };
     }
 
-    // ===== 4. Upload des fichiers sur Supabase (dossier complet garanti) =====
+    // ===== 4. Upload des fichiers sur Supabase, classés par date + dossier =====
+    // Arborescence : candidatures/{année}/{mois}/{code de suivi}/{libellé}.pdf
+    // → facile à parcourir, et à purger par période (RGPD, 6 mois).
+    const trackingCode = generateTrackingCode();
+    const now = new Date();
+    const datePrefix = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const folderPath = `candidatures/${datePrefix}/${trackingCode}`;
+
     const uploadedDocuments: { label: string; url: string }[] = [];
     try {
       for (const { label, file } of files) {
-        const url = await uploadDocument(file, "candidatures");
+        const url = await uploadDocument(file, folderPath, label);
         uploadedDocuments.push({ label, url });
       }
     } catch (uploadError) {
@@ -106,7 +113,6 @@ export async function submitCandidature(
     }
 
     // ===== 5. Créer profil + demande + documents en une TRANSACTION =====
-    const trackingCode = generateTrackingCode();
     const startDate = new Date(data.startDate);
 
     try {
