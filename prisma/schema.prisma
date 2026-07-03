@@ -69,14 +69,23 @@ model InternshipRequest {
 
 /// Informations personnelles du candidat liées à une demande.
 model Profile {
-  id        String  @id @default(cuid())
+  id        String @id @default(cuid())
   firstName String
   lastName  String
   email     String
-  phone     String
-  school    String
-  field     String // filière
-  level     String // niveau d'étude
+  phone     String // téléphone du candidat
+
+  // Domicile — lieu-dit (cf. CDC). La localisation GPS est fournie par le
+  // candidat sous forme de document « Plan de localisation » (voir Document).
+  lieudit String
+
+  // Téléphones de deux proches du candidat (cf. CDC)
+  relativePhone1 String
+  relativePhone2 String
+
+  school String
+  field  String // filière
+  level  String // niveau d'étude
 
   request InternshipRequest?
 }
@@ -91,12 +100,4 @@ model Document {
 
   request   InternshipRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
   requestId String
-}
-
-/// DEMO — modèle de la slice exemple (features/_example-note).
-/// À SUPPRIMER une fois que le pattern vertical slice est compris.
-model ExampleNote {
-  id        String   @id @default(cuid())
-  message   String
-  createdAt DateTime @default(now())
 }

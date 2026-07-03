@@ -25,7 +25,8 @@ export const supabase = createClient(supabaseUrl ?? "", supabaseServiceKey ?? ""
 export const DOCUMENTS_BUCKET = storageBucketName;
 
 /**
- * Téléverse un fichier PDF dans Supabase Storage et renvoie son URL publique.
+ * Téléverse un fichier PDF dans Supabase Storage et renvoie une URL de
+ * lecture signée (bucket privé — documents candidats sensibles / RGPD).
  * @param file       Le fichier à téléverser (déjà validé : PDF, <= 2 Mo).
  * @param pathPrefix Dossier logique (ex. l'id de la demande).
  */

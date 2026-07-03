@@ -1,5 +1,6 @@
 "use client";
 
+import { Info } from "lucide-react";
 import type { Step1InfosInput } from "../schema";
 
 interface StepInfosProps {
@@ -85,65 +86,116 @@ export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
         )}
       </div>
 
-      {/* Téléphone 1 */}
+      {/* Téléphone du candidat */}
       <div className="form-control">
         <label className="label">
           <span className="label-text font-semibold">
-            Téléphone 1 <span className="text-error">*</span>
+            Téléphone <span className="text-error">*</span>
           </span>
         </label>
         <input
           type="tel"
-          placeholder="+33 6 12 34 56 78"
-          className={`input input-bordered ${errors.phone1 ? "input-error" : ""}`}
-          value={data.phone1 || ""}
-          onChange={(e) => onChange("phone1", e.target.value)}
+          placeholder="+237 6 71 23 45 67"
+          className={`input input-bordered ${errors.phone ? "input-error" : ""}`}
+          value={data.phone || ""}
+          onChange={(e) => onChange("phone", e.target.value)}
           required
         />
-        {errors.phone1 && (
+        {errors.phone && (
           <label className="label">
-            <span className="label-text-alt text-error">{errors.phone1}</span>
+            <span className="label-text-alt text-error">{errors.phone}</span>
           </label>
         )}
       </div>
 
-      {/* Téléphone 2 */}
+      {/* Domicile — Lieu-dit */}
       <div className="form-control">
         <label className="label">
           <span className="label-text font-semibold">
-            Téléphone 2 <span className="text-error">*</span>
+            Domicile (lieu-dit) <span className="text-error">*</span>
           </span>
         </label>
         <input
-          type="tel"
-          placeholder="+33 7 12 34 56 78"
-          className={`input input-bordered ${errors.phone2 ? "input-error" : ""}`}
-          value={data.phone2 || ""}
-          onChange={(e) => onChange("phone2", e.target.value)}
+          type="text"
+          placeholder="Ex : Nkolbisson, face pharmacie…"
+          className={`input input-bordered ${errors.lieudit ? "input-error" : ""}`}
+          value={data.lieudit || ""}
+          onChange={(e) => onChange("lieudit", e.target.value)}
           required
         />
-        {errors.phone2 && (
+        {errors.lieudit ? (
           <label className="label">
-            <span className="label-text-alt text-error">{errors.phone2}</span>
+            <span className="label-text-alt text-error">{errors.lieudit}</span>
+          </label>
+        ) : (
+          <label className="label">
+            <span className="label-text-alt text-base-content/50">
+              Le plan de localisation sera joint à l'étape « Documents ».
+            </span>
           </label>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Téléphone proche 1 */}
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text font-semibold">
+              Téléphone d'un proche 1 <span className="text-error">*</span>
+            </span>
+          </label>
+          <input
+            type="tel"
+            placeholder="+237 6 90 12 34 56"
+            className={`input input-bordered ${
+              errors.relativePhone1 ? "input-error" : ""
+            }`}
+            value={data.relativePhone1 || ""}
+            onChange={(e) => onChange("relativePhone1", e.target.value)}
+            required
+          />
+          {errors.relativePhone1 && (
+            <label className="label">
+              <span className="label-text-alt text-error">
+                {errors.relativePhone1}
+              </span>
+            </label>
+          )}
+        </div>
+
+        {/* Téléphone proche 2 */}
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text font-semibold">
+              Téléphone d'un proche 2 <span className="text-error">*</span>
+            </span>
+          </label>
+          <input
+            type="tel"
+            placeholder="+237 6 55 66 77 88"
+            className={`input input-bordered ${
+              errors.relativePhone2 ? "input-error" : ""
+            }`}
+            value={data.relativePhone2 || ""}
+            onChange={(e) => onChange("relativePhone2", e.target.value)}
+            required
+          />
+          {errors.relativePhone2 && (
+            <label className="label">
+              <span className="label-text-alt text-error">
+                {errors.relativePhone2}
+              </span>
+            </label>
+          )}
+        </div>
       </div>
 
       <div className="alert alert-info">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          className="stroke-current shrink-0 w-6 h-6"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          ></path>
-        </svg>
-        <span>Les 2 numéros de téléphone sont obligatoires et doivent être valides.</span>
+        <Info className="w-5 h-5 shrink-0" aria-hidden="true" />
+        <span>
+          Tous les numéros doivent être au format international (ex. +237…). Les
+          deux contacts proches sont obligatoires.
+        </span>
       </div>
     </div>
   );

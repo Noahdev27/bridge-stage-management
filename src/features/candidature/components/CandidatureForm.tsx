@@ -2,6 +2,16 @@
 
 import { useState, useActionState, useRef } from "react";
 import type { InternshipType } from "@prisma/client";
+import {
+  UserRound,
+  GraduationCap,
+  FileText,
+  ClipboardCheck,
+  ArrowLeft,
+  ArrowRight,
+  Send,
+  AlertCircle,
+} from "lucide-react";
 import { submitCandidature, type ActionState } from "../actions";
 import { step1InfosSchema, step2ParcoursSchema } from "../schema";
 import type { Step1InfosInput, Step2ParcoursInput } from "../schema";
@@ -81,18 +91,15 @@ export function CandidatureForm() {
   // Validation complète de l'étape 1
   const validateStep1 = (): boolean => {
     const result = step1InfosSchema.safeParse(step1Data);
-    console.log("🔍 Validation Step1:", { step1Data, result });
     if (!result.success) {
       const errors: Record<string, string> = {};
       result.error.issues.forEach((issue) => {
         errors[issue.path[0] as string] = issue.message;
       });
       setStep1Errors(errors);
-      console.log("❌ Step1 errors:", errors);
       return false;
     }
     setStep1Errors({});
-    console.log("✅ Step1 valid!");
     return true;
   };
 
@@ -185,19 +192,7 @@ export function CandidatureForm() {
   if (actionState.error && !isPending) {
     return (
       <div className="alert alert-error mb-6">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          className="stroke-current shrink-0 w-6 h-6"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m2-2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
+        <AlertCircle className="w-6 h-6 shrink-0" aria-hidden="true" />
         <span>{actionState.error}</span>
       </div>
     );
@@ -241,11 +236,31 @@ export function CandidatureForm() {
 
       {/* Titre de l'étape */}
       <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2">
-          {currentStep === 1 && "📋 Vos informations personnelles"}
-          {currentStep === 2 && "🎓 Votre parcours et le stage"}
-          {currentStep === 3 && "📄 Vos documents"}
-          {currentStep === 4 && "✓ Vérification finale"}
+        <h2 className="flex items-center gap-2 text-2xl font-bold mb-2">
+          {currentStep === 1 && (
+            <>
+              <UserRound className="w-6 h-6 text-primary" aria-hidden="true" />
+              Vos informations personnelles
+            </>
+          )}
+          {currentStep === 2 && (
+            <>
+              <GraduationCap className="w-6 h-6 text-primary" aria-hidden="true" />
+              Votre parcours et le stage
+            </>
+          )}
+          {currentStep === 3 && (
+            <>
+              <FileText className="w-6 h-6 text-primary" aria-hidden="true" />
+              Vos documents
+            </>
+          )}
+          {currentStep === 4 && (
+            <>
+              <ClipboardCheck className="w-6 h-6 text-primary" aria-hidden="true" />
+              Vérification finale
+            </>
+          )}
         </h2>
         <p className="text-base-content/60">
           {currentStep === 1 &&
@@ -304,26 +319,29 @@ export function CandidatureForm() {
           type="button"
           onClick={handlePrev}
           disabled={currentStep === 1}
-          className="btn btn-outline flex-1"
+          className="btn btn-outline flex-1 gap-2"
         >
-          ← Précédent
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          Précédent
         </button>
 
         {currentStep < 4 ? (
           <button
             type="button"
             onClick={handleNext}
-            className="btn btn-primary flex-1"
+            className="btn btn-primary flex-1 gap-2"
           >
-            Suivant →
+            Suivant
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </button>
         ) : (
           <button
             type="submit"
             disabled={uploadedFiles.size === 0 || isPending}
-            className="btn btn-success flex-1"
+            className="btn btn-success flex-1 gap-2"
           >
-            ✓ Envoyer ma candidature
+            <Send className="w-4 h-4" aria-hidden="true" />
+            Envoyer ma candidature
           </button>
         )}
       </div>

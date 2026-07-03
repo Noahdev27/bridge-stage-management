@@ -17,7 +17,7 @@ const internationalPhoneSchema = z
   .string()
   .min(1, "Le numéro de téléphone est requis.")
   .refine((value) => value.trim().startsWith("+"), {
-    message: "Le numéro doit commencer par l'indicatif international, ex. +33.",
+    message: "Le numéro doit commencer par l'indicatif international, ex. +237.",
   })
   .refine((value) => isValidInternationalPhone(value), {
     message:
@@ -39,8 +39,17 @@ export const step1InfosSchema = z.object({
     .min(1, "L'email est requis.")
     .email("Veuillez entrer une adresse email valide.")
     .max(255),
-  phone1: internationalPhoneSchema,
-  phone2: internationalPhoneSchema,
+  // Téléphone du candidat
+  phone: internationalPhoneSchema,
+  // Domicile : lieu-dit (la localisation GPS est fournie via le document
+  // « Plan de localisation » à l'étape Documents).
+  lieudit: z
+    .string()
+    .min(1, "Le lieu-dit (domicile) est requis.")
+    .max(255),
+  // Téléphones de deux proches du candidat
+  relativePhone1: internationalPhoneSchema,
+  relativePhone2: internationalPhoneSchema,
 });
 
 export type Step1InfosInput = z.infer<typeof step1InfosSchema>;
