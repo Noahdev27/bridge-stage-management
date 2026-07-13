@@ -20,11 +20,10 @@ export function StatusFilter() {
   const handleFilterChange = (status: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (status === "ALL") {
-      params.delete("status"); // Nettoie l'URL si on veut tout voir
+      params.delete("status");
     } else {
       params.set("status", status);
     }
-    // Redirige vers la même page avec les nouveaux paramètres de recherche
     router.push(`/admin?${params.toString()}`);
   };
 

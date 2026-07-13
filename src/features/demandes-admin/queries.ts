@@ -1,6 +1,150 @@
 import { prisma } from "@/shared/db/prisma";
 import { RequestStatus, type Prisma } from "@prisma/client";
 
+export type RequestStats = {
+  received: number;
+  processed: number;
+  accepted: number;
+  rejected: number;
+  total: number;
+};
+
+export type MonthlyStats = {
+  month: number;
+  label: string;
+  stats: RequestStats;
+};
+
+const MONTH_LABELS = [
+  "Janvier",
+  "Février",
+  "Mars",
+  "Avril",
+  "Mai",
+  "Juin",
+  "Juillet",
+  "Août",
+  "Septembre",
+  "Octobre",
+  "Novembre",
+  "Décembre",
+];
+
+function getPeriodBounds(year: number, month?: number) {
+  if (month !== undefined) {
+    return {
+      start: new Date(year, month - 1, 1),
+      end: new Date(year, month, 1),
+    };
+  }
+
+  return {
+    start: new Date(year, 0, 1),
+    end: new Date(year + 1, 0, 1),
+  };
+}
+
+function buildStatsFromCounts(
+  counts: Partial<Record<RequestStatus, number>>
+): RequestStats {
+  const received = counts.PENDING ?? 0;
+  const processed = counts.PROCESS ?? 0;
+  const accepted = counts.ACCEPTED ?? 0;
+  const rejected = counts.REJECTED ?? 0;
+
+  return {
+    received,
+    processed,
+    accepted,
+    rejected,
+    total: received + processed + accepted + rejected,
+  };
+}
+
+function aggregateByStatus(
+  rows: { status: RequestStatus; createdAt: Date }[],
+  month?: number
+): RequestStats {
+  const filtered =
+    month !== undefined
+      ? rows.filter((row) => row.createdAt.getMonth() === month - 1)
+      : rows;
+
+  const counts: Partial<Record<RequestStatus, number>> = {};
+  for (const row of filtered) {
+    counts[row.status] = (counts[row.status] ?? 0) + 1;
+  }
+
+  return buildStatsFromCounts(counts);
+}
+
+export async function getStatsAvailableYears(): Promise<number[]> {
+  try {
+    const bounds = await prisma.internshipRequest.aggregate({
+      _min: { createdAt: true },
+      _max: { createdAt: true },
+    });
+
+    const currentYear = new Date().getFullYear();
+    if (!bounds._min.createdAt || !bounds._max.createdAt) {
+      return [currentYear];
+    }
+
+    const minYear = bounds._min.createdAt.getFullYear();
+    const maxYear = Math.max(bounds._max.createdAt.getFullYear(), currentYear);
+    return Array.from({ length: maxYear - minYear + 1 }, (_, index) => maxYear - index);
+  } catch (error) {
+    console.error("[queries] Erreur lors de la récupération des années:", error);
+    return [new Date().getFullYear()];
+  }
+}
+
+export async function getRequestStats(
+  year: number,
+  month?: number
+): Promise<RequestStats> {
+  try {
+    const { start, end } = getPeriodBounds(year, month);
+    const groups = await prisma.internshipRequest.groupBy({
+      by: ["status"],
+      where: { createdAt: { gte: start, lt: end } },
+      _count: { _all: true },
+    });
+
+    const counts = Object.fromEntries(
+      groups.map((group) => [group.status, group._count._all])
+    ) as Partial<Record<RequestStatus, number>>;
+
+    return buildStatsFromCounts(counts);
+  } catch (error) {
+    console.error("[queries] Erreur lors du calcul des statistiques:", error);
+    return { received: 0, processed: 0, accepted: 0, rejected: 0, total: 0 };
+  }
+}
+
+export async function getMonthlyStatsBreakdown(year: number): Promise<MonthlyStats[]> {
+  try {
+    const { start, end } = getPeriodBounds(year);
+    const rows = await prisma.internshipRequest.findMany({
+      where: { createdAt: { gte: start, lt: end } },
+      select: { status: true, createdAt: true },
+    });
+
+    return MONTH_LABELS.map((label, index) => ({
+      month: index + 1,
+      label,
+      stats: aggregateByStatus(rows, index + 1),
+    }));
+  } catch (error) {
+    console.error("[queries] Erreur lors du regroupement mensuel:", error);
+    return MONTH_LABELS.map((label, index) => ({
+      month: index + 1,
+      label,
+      stats: { received: 0, processed: 0, accepted: 0, rejected: 0, total: 0 },
+    }));
+  }
+}
+
 /**
  * Récupère toutes les candidatures filtrées par statut pour la table principale.
  */
