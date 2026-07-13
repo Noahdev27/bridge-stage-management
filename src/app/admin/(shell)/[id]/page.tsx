@@ -1,5 +1,6 @@
 import { getCandidatureById } from "@/features/demandes-admin/queries";
 import { updateCandidatureStatus } from "@/features/demandes-admin/actions";
+import { EvaluationForm } from "@/features/demandes-admin/components/EvaluationForm";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -11,6 +12,8 @@ import {
   X,
   FileText,
 } from "lucide-react";
+import { STATUS_LABELS } from "@/shared/constants/domain";
+import type { RequestStatus } from "@prisma/client";
 
 interface DetailAdminPageProps {
   params: Promise<{ id: string }>;
@@ -33,18 +36,20 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
     );
   }
 
-  const { profile, documents, status, type, createdAt } = candidature;
+  const { profile, documents, status, type, createdAt, evaluation } = candidature;
 
-  // Fonction inline pour gérer le changement de statut via Server Actions directs
   const handleStatusChange = async (formData: FormData) => {
     "use server";
-    const nextStatus = formData.get("status") as any;
-    if (nextStatus) {
+    const nextStatus = formData.get("status");
+    if (
+      nextStatus === "PENDING" ||
+      nextStatus === "PROCESS" ||
+      nextStatus === "ACCEPTED" ||
+      nextStatus === "REJECTED"
+    ) {
       await updateCandidatureStatus(id, nextStatus);
     }
   };
-
-  // Style des badges de statut
   const getStatusBadgeClass = (currentStatus: string) => {
     switch (currentStatus) {
       case "PENDING": return "badge-warning text-warning-content";
@@ -73,7 +78,7 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
               {profile.firstName} {profile.lastName}
             </h1>
             <span className={`badge ${getStatusBadgeClass(status)} font-semibold px-2.5 py-1`}>
-              {status}
+              {STATUS_LABELS[status as RequestStatus]}
             </span>
           </div>
           <p className="text-base-content/60 mt-1 inline-flex items-center gap-1.5 flex-wrap">
@@ -182,6 +187,16 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
               )}
             </div>
           </div>
+
+          <EvaluationForm
+            requestId={candidature.id}
+            initialRating={evaluation?.rating}
+            initialComment={evaluation?.comment}
+            lastUpdatedAt={evaluation?.updatedAt}
+            authorLabel={
+              evaluation?.author?.name || evaluation?.author?.email || null
+            }
+          />
         </div>
       </div>
     </main>

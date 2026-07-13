@@ -206,8 +206,15 @@ export async function getCandidatureById(id: string) {
     const candidature = await prisma.internshipRequest.findUnique({
       where: { id },
       include: {
-        profile: true,    // Récupère les infos personnelles (école, filière, téléphone, etc.)
-        documents: true,  // Récupère la liste des pièces jointes (CV, LM, etc.) via la relation
+        profile: true,
+        documents: true,
+        evaluation: {
+          include: {
+            author: {
+              select: { name: true, email: true },
+            },
+          },
+        },
       },
     });
 

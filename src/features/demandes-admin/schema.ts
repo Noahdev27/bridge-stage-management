@@ -45,3 +45,17 @@ export function parseCandidatureListFilters(
 
   return parsed.data;
 }
+
+export const requestEvaluationSchema = z.object({
+  rating: z.coerce
+    .number()
+    .int("La note doit être un nombre entier.")
+    .min(1, "Attribuez une note entre 1 et 5.")
+    .max(5, "Attribuez une note entre 1 et 5."),
+  comment: z
+    .string()
+    .max(2000, "Le commentaire ne doit pas dépasser 2000 caractères.")
+    .optional(),
+});
+
+export type RequestEvaluationInput = z.infer<typeof requestEvaluationSchema>;

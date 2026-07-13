@@ -46,6 +46,8 @@ model User {
   name      String?
   role      Role     @default(RH)
   createdAt DateTime @default(now())
+
+  evaluations RequestEvaluation[]
 }
 
 /// Demande de stage déposée par un candidat.
@@ -65,6 +67,7 @@ model InternshipRequest {
   profile    Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId  String     @unique
   documents  Document[]
+  evaluation RequestEvaluation?
 }
 
 /// Informations personnelles du candidat liées à une demande.
@@ -101,4 +104,19 @@ model Document {
 
   request   InternshipRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
   requestId String
+}
+
+/// Évaluation interne RH d'une demande (note + commentaire, non visible du candidat).
+model RequestEvaluation {
+  id        String   @id @default(cuid())
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  request   InternshipRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestId String            @unique
+
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId String?
 }
