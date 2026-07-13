@@ -6,7 +6,8 @@ import {
   getRequestStats,
   getStatsAvailableYears,
 } from "@/features/demandes-admin/queries";
-import { StatusFilter } from "@/features/demandes-admin/components/StatusFilter";
+import { CandidatureFilters } from "@/features/demandes-admin/components/CandidatureFilters";
+import { parseCandidatureListFilters } from "@/features/demandes-admin/schema";
 import { PeriodFilter } from "@/features/demandes-admin/components/PeriodFilter";
 import { StatsDashboard } from "@/features/demandes-admin/components/StatsDashboard";
 import Link from "next/link";
@@ -15,7 +16,14 @@ import { STATUS_LABELS } from "@/shared/constants/domain";
 import type { RequestStatus } from "@prisma/client";
 
 interface AdminPageProps {
-  searchParams: Promise<{ status?: string; year?: string; month?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    year?: string;
+    month?: string;
+    type?: string;
+    from?: string;
+    to?: string;
+  }>;
 }
 
 function parseYear(value: string | undefined, fallback: number): number {
@@ -44,8 +52,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const year = parseYear(params.year, currentYear);
   const month = parseMonth(params.month);
 
+  const listFilters = parseCandidatureListFilters(params);
+
   const [candidatures, stats, monthlyBreakdown, years] = await Promise.all([
-    getCandidatures(params.status),
+    getCandidatures(listFilters),
     getRequestStats(year, month),
     getMonthlyStatsBreakdown(year),
     getStatsAvailableYears(),
@@ -93,7 +103,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
       <div>
         <h2 className="text-xl font-bold mb-4">Liste des candidatures</h2>
-        <StatusFilter />
+        <CandidatureFilters />
 
         <div className="overflow-x-auto border border-base-300 rounded-xl bg-base-100 shadow-sm">
           <table className="table table-zebra w-full">
@@ -110,7 +120,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               {candidatures.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-12 text-base-content/50">
-                    Aucune candidature trouvée pour ce statut.
+                    Aucune candidature trouvée pour ces critères.
                   </td>
                 </tr>
               ) : (

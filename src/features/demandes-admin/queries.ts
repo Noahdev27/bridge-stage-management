@@ -1,5 +1,6 @@
 import { prisma } from "@/shared/db/prisma";
 import { RequestStatus, type Prisma } from "@prisma/client";
+import type { CandidatureListFilters } from "./schema";
 
 export type RequestStats = {
   received: number;
@@ -146,18 +147,31 @@ export async function getMonthlyStatsBreakdown(year: number): Promise<MonthlySta
 }
 
 /**
- * Récupère toutes les candidatures filtrées par statut pour la table principale.
+ * Récupère les candidatures filtrées pour la table principale.
  */
-export async function getCandidatures(statusFilter?: string) {
+export async function getCandidatures(filters: CandidatureListFilters = {}) {
   try {
-    const isValidStatus =
-      !!statusFilter &&
-      statusFilter !== "ALL" &&
-      statusFilter in RequestStatus;
+    const whereClause: Prisma.InternshipRequestWhereInput = {};
 
-    const whereClause: Prisma.InternshipRequestWhereInput = isValidStatus
-      ? { status: statusFilter as RequestStatus }
-      : {};
+    if (filters.status) {
+      whereClause.status = filters.status;
+    }
+
+    if (filters.type) {
+      whereClause.type = filters.type;
+    }
+
+    if (filters.from || filters.to) {
+      whereClause.createdAt = {};
+      if (filters.from) {
+        whereClause.createdAt.gte = new Date(`${filters.from}T00:00:00`);
+      }
+      if (filters.to) {
+        const end = new Date(`${filters.to}T00:00:00`);
+        end.setDate(end.getDate() + 1);
+        whereClause.createdAt.lt = end;
+      }
+    }
 
     const candidatures = await prisma.internshipRequest.findMany({
       where: whereClause,
