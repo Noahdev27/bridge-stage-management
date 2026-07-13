@@ -29,6 +29,30 @@ function generateTrackingCode(): string {
   return randomBytes(4).toString("hex").toUpperCase().substring(0, 8);
 }
 
+function validateDocumentSet(
+  internshipType: InternshipType,
+  labels: string[]
+): string | null {
+  const requiredDocs = REQUIRED_DOCUMENTS[internshipType];
+  const requiredSet = new Set(requiredDocs);
+
+  const missing = requiredDocs.filter((doc) => !labels.includes(doc));
+  if (missing.length > 0) {
+    return `Documents manquants pour ce type de stage : ${missing.join(", ")}.`;
+  }
+
+  const unexpected = labels.filter((label) => !requiredSet.has(label));
+  if (unexpected.length > 0) {
+    return `Documents non requis pour ce type de stage : ${[...new Set(unexpected)].join(", ")}.`;
+  }
+
+  if (labels.length !== requiredDocs.length) {
+    return "Le nombre de documents fournis ne correspond pas au dossier requis.";
+  }
+
+  return null;
+}
+
 /**
  * Server Action : crée une candidature complète.
  * 1. Valide les données (Zod)
@@ -83,14 +107,12 @@ export async function submitCandidature(
       }
     }
 
-    // ===== 3. Vérifier la COMPOSITION du dossier selon le type (serveur) =====
-    const requiredDocs = REQUIRED_DOCUMENTS[internshipType];
-    const providedLabels = new Set(files.map((f) => f.label));
-    const missing = requiredDocs.filter((doc) => !providedLabels.has(doc));
-    if (missing.length > 0) {
-      return {
-        error: `Documents manquants pour ce type de stage : ${missing.join(", ")}.`,
-      };
+    const documentError = validateDocumentSet(
+      internshipType,
+      files.map((f) => f.label)
+    );
+    if (documentError) {
+      return { error: documentError };
     }
 
     // ===== 4. Upload des fichiers sur Supabase, classés par date + dossier =====
