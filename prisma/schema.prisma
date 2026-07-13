@@ -75,9 +75,10 @@ model Profile {
   email     String
   phone     String // téléphone du candidat
 
-  // Domicile — lieu-dit (cf. CDC). La localisation GPS est fournie par le
-  // candidat sous forme de document « Plan de localisation » (voir Document).
-  lieudit String
+  // Domicile — lieu-dit et coordonnées GPS (cf. CDC)
+  lieudit   String
+  latitude  Float
+  longitude Float
 
   // Téléphones de deux proches du candidat (cf. CDC)
   relativePhone1 String

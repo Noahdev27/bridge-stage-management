@@ -123,18 +123,65 @@ export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
           onChange={(e) => onChange("lieudit", e.target.value)}
           required
         />
-        {errors.lieudit ? (
+        {errors.lieudit && (
           <label className="label">
             <span className="label-text-alt text-error">{errors.lieudit}</span>
           </label>
-        ) : (
-          <label className="label">
-            <span className="label-text-alt text-base-content/50">
-              Le plan de localisation sera joint à l'étape « Documents ».
-            </span>
-          </label>
         )}
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text font-semibold">
+              Latitude GPS <span className="text-error">*</span>
+            </span>
+          </label>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="Ex : 3.8480"
+            className={`input input-bordered ${errors.latitude ? "input-error" : ""}`}
+            value={data.latitude?.toString() || ""}
+            onChange={(e) => onChange("latitude", e.target.value)}
+            required
+          />
+          {errors.latitude && (
+            <label className="label">
+              <span className="label-text-alt text-error">{errors.latitude}</span>
+            </label>
+          )}
+        </div>
+
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text font-semibold">
+              Longitude GPS <span className="text-error">*</span>
+            </span>
+          </label>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="Ex : 11.5021"
+            className={`input input-bordered ${errors.longitude ? "input-error" : ""}`}
+            value={data.longitude?.toString() || ""}
+            onChange={(e) => onChange("longitude", e.target.value)}
+            required
+          />
+          {errors.longitude && (
+            <label className="label">
+              <span className="label-text-alt text-error">{errors.longitude}</span>
+            </label>
+          )}
+        </div>
+      </div>
+
+      <label className="label -mt-2">
+        <span className="label-text-alt text-base-content/50">
+          Indiquez les coordonnées décimales de votre domicile (ex. depuis Google Maps).
+          Le plan de localisation reste requis à l'étape « Documents ».
+        </span>
+      </label>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Téléphone proche 1 */}

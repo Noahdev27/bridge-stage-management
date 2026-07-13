@@ -103,6 +103,15 @@ export function StepValidation({
         <InfoRow icon={Phone} label="Téléphone" value={step1.phone} />
         <InfoRow icon={MapPin} label="Domicile (lieu-dit)" value={step1.lieudit} />
         <InfoRow
+          icon={MapPin}
+          label="Coordonnées GPS"
+          value={
+            step1.latitude != null && step1.longitude != null
+              ? `${step1.latitude}, ${step1.longitude}`
+              : ""
+          }
+        />
+        <InfoRow
           icon={PhoneCall}
           label="Proche 1"
           value={step1.relativePhone1}

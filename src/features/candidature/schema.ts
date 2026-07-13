@@ -24,6 +24,27 @@ const internationalPhoneSchema = z
       "Le numéro doit être un numéro international valide avec un indicatif pays.",
   });
 
+function gpsCoordinateSchema(min: number, max: number, label: string) {
+  return z
+    .union([z.string(), z.number()])
+    .refine(
+      (value) => value !== "" && value !== null && value !== undefined,
+      { message: `La ${label} est requise.` }
+    )
+    .transform((value) =>
+      typeof value === "string" ? Number(value.replace(",", ".")) : value
+    )
+    .pipe(
+      z
+        .number()
+        .refine((value) => !Number.isNaN(value), "Coordonnée invalide.")
+        .refine(
+          (value) => value >= min && value <= max,
+          `La ${label} doit être comprise entre ${min} et ${max}.`
+        )
+    );
+}
+
 // ===== ÉTAPE 1 : Informations personnelles =====
 export const step1InfosSchema = z.object({
   firstName: z
@@ -41,12 +62,12 @@ export const step1InfosSchema = z.object({
     .max(255),
   // Téléphone du candidat
   phone: internationalPhoneSchema,
-  // Domicile : lieu-dit (la localisation GPS est fournie via le document
-  // « Plan de localisation » à l'étape Documents).
   lieudit: z
     .string()
     .min(1, "Le lieu-dit (domicile) est requis.")
     .max(255),
+  latitude: gpsCoordinateSchema(-90, 90, "latitude"),
+  longitude: gpsCoordinateSchema(-180, 180, "longitude"),
   // Téléphones de deux proches du candidat
   relativePhone1: internationalPhoneSchema,
   relativePhone2: internationalPhoneSchema,
