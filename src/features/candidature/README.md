@@ -6,7 +6,7 @@
 Permettre à un candidat de soumettre une demande de stage via un formulaire
 multi-étapes et d'obtenir un code de suivi.
 
-## Fichiers attendus (copier le pattern de `_example-note`)
+## Fichiers attendus
 - `schema.ts` — validation Zod du formulaire (toutes les étapes)
 - `actions.ts` — Server Action : créer `Profile` + `InternshipRequest` + `Document[]`, générer le `trackingCode`
 - `queries.ts` — lectures éventuelles

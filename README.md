@@ -40,7 +40,7 @@ npm run db:seed
 npm run dev
 ```
 
-App sur http://localhost:3000 · Slice exemple sur http://localhost:3000/exemple
+App sur http://localhost:3000
 
 ## Scripts
 
@@ -59,11 +59,10 @@ App sur http://localhost:3000 · Slice exemple sur http://localhost:3000/exemple
 ```
 src/
 ├─ features/        une fonctionnalité = un dossier complet (UI + logique + données)
-│  ├─ _example-note/   slice de démo à copier puis supprimer
-│  ├─ candidature/     Slice 1 — à réaliser
-│  ├─ suivi/           Slice 2 — à réaliser
-│  ├─ demandes-admin/  Slice 3 — à réaliser
-│  └─ notifications/   Slice 4 — à réaliser
+│  ├─ candidature/     formulaire de candidature
+│  ├─ suivi/           suivi par code
+│  ├─ demandes-admin/  back-office RH
+│  └─ notifications/   emails transactionnels
 ├─ shared/          code partagé (db, auth, storage, ui, constantes, validation)
 ├─ types/           déclarations TypeScript globales (augmentation NextAuth)
 └─ app/             routes Next.js qui assemblent les features

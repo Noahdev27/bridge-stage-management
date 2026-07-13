@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/shared/db/prisma";
-import { uploadDocument } from "@/shared/storage/supabase";
+import {
+  deleteStoragePaths,
+  moveDocument,
+  uploadDocument,
+} from "@/shared/storage/supabase";
 import { validatePdf } from "@/shared/validation/file";
 import { REQUIRED_DOCUMENTS } from "@/shared/constants/domain";
 import { completeApplicationSchema } from "./schema";
@@ -115,30 +119,31 @@ export async function submitCandidature(
       return { error: documentError };
     }
 
-    // ===== 4. Upload des fichiers sur Supabase, classés par date + dossier =====
-    // Arborescence : candidatures/{année}/{mois}/{code de suivi}/{libellé}.pdf
-    // → facile à parcourir, et à purger par période (RGPD, 6 mois).
-    const trackingCode = generateTrackingCode();
-    const now = new Date();
-    const datePrefix = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const folderPath = `candidatures/${datePrefix}/${trackingCode}`;
+    const uploadSessionId = randomBytes(16).toString("hex");
+    const tempFolder = `temp/${uploadSessionId}`;
+    const stagedFiles: { label: string; storagePath: string }[] = [];
 
-    const uploadedDocuments: { label: string; url: string }[] = [];
     try {
       for (const { label, file } of files) {
-        const url = await uploadDocument(file, folderPath, label);
-        uploadedDocuments.push({ label, url });
+        const uploaded = await uploadDocument(file, tempFolder, label);
+        stagedFiles.push({ label, storagePath: uploaded.storagePath });
       }
     } catch (uploadError) {
+      await deleteStoragePaths(stagedFiles.map((f) => f.storagePath));
       console.error("[candidature] Upload error:", uploadError);
       return { error: "Erreur lors de l'upload d'un fichier. Veuillez réessayer." };
     }
 
-    // ===== 5. Créer profil + demande + documents en une TRANSACTION =====
+    const trackingCode = generateTrackingCode();
     const startDate = new Date(data.startDate);
+    const now = new Date();
+    const datePrefix = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    let requestId: string;
+    let profileId: string;
 
     try {
-      await prisma.$transaction(async (tx) => {
+      const created = await prisma.$transaction(async (tx) => {
         const profile = await tx.profile.create({
           data: {
             firstName: data.firstName,
@@ -166,16 +171,50 @@ export async function submitCandidature(
           },
         });
 
-        await tx.document.createMany({
-          data: uploadedDocuments.map((doc) => ({
-            label: doc.label,
-            url: doc.url,
-            requestId: internshipRequest.id,
-          })),
-        });
+        return { requestId: internshipRequest.id, profileId: profile.id };
       });
+
+      requestId = created.requestId;
+      profileId = created.profileId;
     } catch (dbError) {
+      await deleteStoragePaths(stagedFiles.map((f) => f.storagePath));
       console.error("[candidature] Erreur base de données:", dbError);
+      return {
+        error:
+          "Une erreur est survenue lors de la création de votre demande. Veuillez réessayer.",
+      };
+    }
+
+    const finalFolder = `candidatures/${datePrefix}/${requestId}`;
+    const pendingPaths = stagedFiles.map((f) => f.storagePath);
+    const finalizedPaths: string[] = [];
+
+    try {
+      const uploadedDocuments: { label: string; url: string }[] = [];
+
+      for (const staged of stagedFiles) {
+        const moved = await moveDocument(staged.storagePath, finalFolder);
+        const pendingIndex = pendingPaths.indexOf(staged.storagePath);
+        if (pendingIndex !== -1) pendingPaths.splice(pendingIndex, 1);
+        finalizedPaths.push(moved.storagePath);
+        uploadedDocuments.push({ label: staged.label, url: moved.signedUrl });
+      }
+
+      await prisma.document.createMany({
+        data: uploadedDocuments.map((doc) => ({
+          label: doc.label,
+          url: doc.url,
+          requestId,
+        })),
+      });
+    } catch (finalizeError) {
+      await deleteStoragePaths([...pendingPaths, ...finalizedPaths]);
+      try {
+        await prisma.profile.delete({ where: { id: profileId } });
+      } catch (rollbackError) {
+        console.error("[candidature] Échec du rollback:", rollbackError);
+      }
+      console.error("[candidature] Erreur finalisation:", finalizeError);
       return {
         error:
           "Une erreur est survenue lors de la création de votre demande. Veuillez réessayer.",
