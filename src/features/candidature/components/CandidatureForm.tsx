@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useActionState, useRef } from "react";
+import { useState, useActionState, useRef, useEffect } from "react";
 import type { InternshipType } from "@prisma/client";
 import {
   UserRound,
@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Send,
-  AlertCircle,
 } from "lucide-react";
 import { submitCandidature, type ActionState } from "../actions";
 import { step1InfosSchema, step2ParcoursSchema } from "../schema";
@@ -20,6 +19,8 @@ import { StepParcours } from "./StepParcours";
 import { StepDocuments } from "./StepDocuments";
 import { StepValidation } from "./StepValidation";
 import { SuccessScreen } from "./SuccessScreen";
+import { CandidatureFormSkeleton } from "./CandidatureFormSkeleton";
+import { useToast } from "@/shared/ui/ToastProvider";
 
 export type CurrentStep = 1 | 2 | 3 | 4;
 
@@ -46,6 +47,13 @@ export function CandidatureForm() {
     ActionState,
     FormData
   >(submitCandidature, {});
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    if (actionState.error && !isPending) {
+      showToast({ type: "error", message: actionState.error });
+    }
+  }, [actionState.error, isPending, showToast]);
 
   // Gestion du changement de champ (étape 1)
   const handleStep1Change = (field: keyof Step1InfosInput, value: string) => {
@@ -188,24 +196,8 @@ export function CandidatureForm() {
     );
   }
 
-  // Si erreur, afficher le message
-  if (actionState.error && !isPending) {
-    return (
-      <div className="alert alert-error mb-6">
-        <AlertCircle className="w-6 h-6 shrink-0" aria-hidden="true" />
-        <span>{actionState.error}</span>
-      </div>
-    );
-  }
-
-  // Écran de chargement
   if (isPending) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-        <p className="text-base-content/60">Envoi de votre candidature...</p>
-      </div>
-    );
+    return <CandidatureFormSkeleton />;
   }
 
   return (

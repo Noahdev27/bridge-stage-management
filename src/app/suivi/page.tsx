@@ -1,15 +1,16 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { checkTrackingStatus, SuiviActionState } from "@/features/suivi/actions";
 import { StatusBadge } from "@/shared/ui/StatusBadge";
+import { SuiviResultSkeleton } from "@/shared/ui/SuiviResultSkeleton";
+import { useToast } from "@/shared/ui/ToastProvider";
 import Link from "next/link";
 import {
   ArrowLeft,
   GraduationCap,
   Briefcase,
-  AlertTriangle,
   School,
   Clock,
   CalendarClock,
@@ -58,6 +59,13 @@ export default function SuiviPage() {
     checkTrackingStatus,
     initialState
   );
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    if (state?.error && !isPending) {
+      showToast({ type: "error", message: state.error });
+    }
+  }, [state?.error, isPending, showToast]);
 
   const c = state?.candidature;
   const isAcademic = c?.type === "ACADEMIC";
@@ -119,36 +127,18 @@ export default function SuiviPage() {
                     disabled={isPending}
                     className="btn btn-primary join-item px-6 gap-2"
                   >
-                    {isPending ? (
-                      <span
-                        className="loading loading-spinner loading-sm"
-                        aria-label="Recherche en cours"
-                      ></span>
-                    ) : (
-                      <>
-                        <Search className="w-4 h-4" aria-hidden="true" />
-                        Rechercher
-                      </>
-                    )}
+                    <Search className="w-4 h-4" aria-hidden="true" />
+                    {isPending ? "Recherche…" : "Rechercher"}
                   </button>
                 </div>
               </div>
-
-              {state?.error && (
-                <div
-                  role="alert"
-                  className="alert alert-error text-sm py-2 px-3 mt-2 rounded-lg text-white font-medium"
-                >
-                  <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  {state.error}
-                </div>
-              )}
             </form>
           </div>
         </div>
 
-        {/* Résultat */}
-        {state?.success && c && (
+        {isPending && <SuiviResultSkeleton />}
+
+        {!isPending && state?.success && c && (
           <div className="card bg-base-100 shadow-xl border border-success/30">
             <div className="card-body p-6 space-y-5">
               {/* En-tête : nom + code + badge */}

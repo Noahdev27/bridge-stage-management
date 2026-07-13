@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -11,6 +11,7 @@ import {
   Home,
   Info,
 } from "lucide-react";
+import { useToast } from "@/shared/ui/ToastProvider";
 
 interface SuccessScreenProps {
   trackingCode: string;
@@ -18,37 +19,33 @@ interface SuccessScreenProps {
 }
 
 export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
-  const [showToast, setShowToast] = useState(true);
   const [copied, setCopied] = useState(false);
+  const { showToast } = useToast();
+  const hasAnnouncedSuccess = useRef(false);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setShowToast(false), 4500);
-    return () => window.clearTimeout(timer);
-  }, []);
+    if (hasAnnouncedSuccess.current) return;
+    hasAnnouncedSuccess.current = true;
+    showToast({ type: "success", message: "Candidature envoyée avec succès !" });
+  }, [showToast]);
 
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(trackingCode);
       setCopied(true);
+      showToast({ type: "success", message: "Code de suivi copié." });
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* clipboard indisponible : on ignore silencieusement */
+      showToast({
+        type: "error",
+        message: "Impossible de copier le code de suivi.",
+      });
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      {showToast && (
-        <div className="toast toast-top toast-end z-50">
-          <div className="alert alert-success">
-            <CheckCircle2 className="w-5 h-5" aria-hidden="true" />
-            <span>Candidature envoyée avec succès !</span>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-md w-full text-center">
-        {/* Icône de succès */}
         <div className="mb-6">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-success/15 text-success">
             <CheckCircle2 className="w-11 h-11" aria-hidden="true" />
@@ -62,7 +59,6 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
           Merci pour votre candidature. Notre équipe RH va l'examiner rapidement.
         </p>
 
-        {/* Code de suivi */}
         <div className="rounded-box border border-base-300 bg-base-100 p-6 mb-6">
           <p className="text-xs font-semibold uppercase tracking-wider text-base-content/50 mb-3">
             Votre code de suivi
@@ -91,7 +87,6 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
           </div>
         </div>
 
-        {/* Confirmation email */}
         {email && (
           <div className="alert alert-info mb-6">
             <MailCheck className="w-5 h-5 shrink-0" aria-hidden="true" />
@@ -102,7 +97,6 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex flex-col gap-3">
           <Link href="/suivi" className="btn btn-primary gap-2">
             <Search className="w-4 h-4" aria-hidden="true" />
@@ -114,7 +108,6 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
           </Link>
         </div>
 
-        {/* À retenir */}
         <div className="mt-8 rounded-box bg-base-200/60 p-4 text-left">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70 mb-2">
             <Info className="w-3.5 h-3.5" aria-hidden="true" />

@@ -1,15 +1,12 @@
 import { getCandidatureById } from "@/features/demandes-admin/queries";
-import { updateCandidatureStatus } from "@/features/demandes-admin/actions";
 import { EvaluationForm } from "@/features/demandes-admin/components/EvaluationForm";
+import { StatusActionBar } from "@/features/demandes-admin/components/StatusActionBar";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
   GraduationCap,
   Briefcase,
-  Settings2,
-  Check,
-  X,
   FileText,
 } from "lucide-react";
 import { STATUS_LABELS } from "@/shared/constants/domain";
@@ -38,18 +35,6 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
 
   const { profile, documents, status, type, createdAt, evaluation } = candidature;
 
-  const handleStatusChange = async (formData: FormData) => {
-    "use server";
-    const nextStatus = formData.get("status");
-    if (
-      nextStatus === "PENDING" ||
-      nextStatus === "PROCESS" ||
-      nextStatus === "ACCEPTED" ||
-      nextStatus === "REJECTED"
-    ) {
-      await updateCandidatureStatus(id, nextStatus);
-    }
-  };
   const getStatusBadgeClass = (currentStatus: string) => {
     switch (currentStatus) {
       case "PENDING": return "badge-warning text-warning-content";
@@ -96,27 +81,7 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
           </p>
         </div>
 
-        {/* Barre d'actions RH rapide */}
-        <form action={handleStatusChange} className="flex gap-2 flex-wrap">
-          {status !== "PROCESS" && status !== "ACCEPTED" && status !== "REJECTED" && (
-            <button type="submit" name="status" value="PROCESS" className="btn btn-sm btn-info text-white gap-1.5">
-              <Settings2 className="w-4 h-4" aria-hidden="true" />
-              Traiter
-            </button>
-          )}
-          {status !== "ACCEPTED" && (
-            <button type="submit" name="status" value="ACCEPTED" className="btn btn-sm btn-success text-white gap-1.5">
-              <Check className="w-4 h-4" aria-hidden="true" />
-              Accepter
-            </button>
-          )}
-          {status !== "REJECTED" && (
-            <button type="submit" name="status" value="REJECTED" className="btn btn-sm btn-error text-white gap-1.5">
-              <X className="w-4 h-4" aria-hidden="true" />
-              Refuser
-            </button>
-          )}
-        </form>
+        <StatusActionBar requestId={id} status={status} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
