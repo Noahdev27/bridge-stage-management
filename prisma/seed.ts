@@ -3,19 +3,63 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-// Crée un compte RH de test pour se connecter au back-office.
-// Lancer avec : npm run db:seed
 async function main() {
-  const email = "rh@bridge.test";
   const password = await bcrypt.hash("password123", 10);
 
   await prisma.user.upsert({
-    where: { email },
+    where: { email: "rh@bridge.test" },
     update: {},
-    create: { email, password, name: "RH Démo", role: "ADMIN" },
+    create: { email: "rh@bridge.test", password, name: "RH Démo", role: "ADMIN" },
   });
 
-  console.log(`Compte RH de test prêt → ${email} / password123`);
+  await prisma.user.upsert({
+    where: { email: "tuteur@bridge.test" },
+    update: { role: "TUTOR" },
+    create: {
+      email: "tuteur@bridge.test",
+      password,
+      name: "Tuteur Démo",
+      role: "TUTOR",
+    },
+  });
+
+  const offers = [
+    {
+      title: "Stage développement web",
+      description:
+        "Participez au développement d'applications Next.js au sein de l'équipe produit.",
+      department: "DEVELOPMENT" as const,
+      type: "ACADEMIC" as const,
+      durationMonths: 2,
+    },
+    {
+      title: "Stage UI / UX Design",
+      description:
+        "Concevez des interfaces claires et accessibles pour nos produits Bridge.",
+      department: "DESIGN" as const,
+      type: "PROFESSIONAL" as const,
+      durationMonths: 3,
+    },
+    {
+      title: "Stage data & analytics",
+      description:
+        "Analysez les indicateurs RH et construisez des tableaux de bord métiers.",
+      department: "DATA" as const,
+      type: "ACADEMIC" as const,
+      durationMonths: 1,
+    },
+  ];
+
+  for (const offer of offers) {
+    const existing = await prisma.internshipOffer.findFirst({
+      where: { title: offer.title },
+    });
+    if (!existing) {
+      await prisma.internshipOffer.create({ data: offer });
+    }
+  }
+
+  console.log("Seed OK → rh@bridge.test / tuteur@bridge.test (password123)");
 }
 
 main()

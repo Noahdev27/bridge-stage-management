@@ -6,6 +6,7 @@ import {
   getMonthlyStatsBreakdown,
   getRequestStats,
   getStatsAvailableYears,
+  getTutors,
 } from "@/features/demandes-admin/queries";
 import { CandidatureFilters } from "@/features/demandes-admin/components/CandidatureFilters";
 import { parseCandidatureListFilters } from "@/features/demandes-admin/schema";
@@ -30,6 +31,8 @@ interface AdminPageProps {
     type?: string;
     from?: string;
     to?: string;
+    tutorId?: string;
+    reportRequired?: string;
   }>;
 }
 
@@ -69,13 +72,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   const listFilters = parseCandidatureListFilters(params);
 
-  const [candidatures, stats, monthlyBreakdown, years, purgeEligibleCount] =
+  const [candidatures, stats, monthlyBreakdown, years, purgeEligibleCount, tutors] =
     await Promise.all([
       getCandidatures(listFilters),
       getRequestStats(year, month),
       getMonthlyStatsBreakdown(year),
       getStatsAvailableYears(),
       countRejectedEligibleForPurge(REJECTED_PURGE_MONTHS),
+      getTutors(),
     ]);
 
   const urgentCount = candidatures.filter((cand) =>
@@ -135,7 +139,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             </span>
           )}
         </div>
-        <CandidatureFilters />
+        <CandidatureFilters tutors={tutors} />
 
         <div className="overflow-x-auto border border-base-300 rounded-xl bg-base-100 shadow-sm">
           <table className="table table-zebra w-full">

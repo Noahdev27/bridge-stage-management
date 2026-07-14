@@ -19,7 +19,7 @@ type NavItem = {
 
 const ITEMS: NavItem[] = [
   { href: "/admin", label: "Demandes", icon: FileText, enabled: true },
-  { href: "#", label: "Tableau de bord", icon: LayoutDashboard, enabled: false },
+  { href: "/offres", label: "Offres", icon: LayoutDashboard, enabled: true },
   { href: "#", label: "Tuteurs", icon: Users, enabled: false },
   { href: "#", label: "Paramètres", icon: Settings, enabled: false },
 ];

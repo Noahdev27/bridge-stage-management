@@ -1,27 +1,29 @@
-// middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { auth } from '@/shared/auth/auth'; // Vérifie que ton fichier auth.ts est bien ici
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { auth } from "@/shared/auth/auth";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. On protège tout ce qui commence par /admin, sauf le login
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+  if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
     const session = await auth();
 
-    // Redirection si non connecté
     if (!session) {
-      return NextResponse.redirect(new URL('/admin/login', request.url));
+      return NextResponse.redirect(new URL("/admin/login", request.url));
     }
 
-    // 2. Vérification des rôles (ADMIN et RH autorisés)
     const role = session.user?.role;
-    const isAuthorized = role === 'ADMIN' || role === 'RH';
+    const isAuthorized = role === "ADMIN" || role === "RH" || role === "TUTOR";
 
     if (!isAuthorized) {
-      // On renvoie les intrus (ex: un utilisateur normal) vers l'accueil
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
+
+  if (pathname.startsWith("/espace-candidat")) {
+    const session = await auth();
+    if (!session || session.user?.role !== "CANDIDATE") {
+      return NextResponse.redirect(new URL("/candidat/login", request.url));
     }
   }
 
@@ -29,5 +31,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ["/admin/:path*", "/espace-candidat/:path*"],
 };

@@ -173,13 +173,24 @@ export async function getCandidatures(filters: CandidatureListFilters = {}) {
       }
     }
 
+    if (filters.tutorId) {
+      whereClause.tutorId = filters.tutorId;
+    }
+
+    if (filters.reportRequired === "true") {
+      whereClause.reportRequired = true;
+    } else if (filters.reportRequired === "false") {
+      whereClause.reportRequired = false;
+    }
+
     const candidatures = await prisma.internshipRequest.findMany({
       where: whereClause,
       include: {
-        profile: true, 
+        profile: true,
+        tutor: { select: { id: true, name: true, email: true } },
       },
       orderBy: {
-        createdAt: "desc", 
+        createdAt: "desc",
       },
     });
 
@@ -192,9 +203,25 @@ export async function getCandidatures(filters: CandidatureListFilters = {}) {
       createdAt: req.createdAt,
       startDate: req.startDate,
       status: req.status,
+      reportRequired: req.reportRequired,
+      tutorName: req.tutor?.name || req.tutor?.email || null,
+      tutorId: req.tutorId,
     }));
   } catch (error) {
     console.error("[queries] Erreur lors de la récupération des candidatures:", error);
+    return [];
+  }
+}
+
+export async function getTutors() {
+  try {
+    return await prisma.user.findMany({
+      where: { role: "TUTOR" },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: "asc" },
+    });
+  } catch (error) {
+    console.error("[queries] Erreur lors de la récupération des tuteurs:", error);
     return [];
   }
 }
@@ -226,6 +253,8 @@ export async function getCandidatureById(id: string) {
       include: {
         profile: true,
         documents: true,
+        tutor: { select: { id: true, name: true, email: true } },
+        offer: true,
         evaluation: {
           include: {
             author: {

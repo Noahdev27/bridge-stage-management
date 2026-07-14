@@ -88,6 +88,7 @@ export async function submitCandidature(
       duration: formData.get("duration"),
       startDate: formData.get("startDate"),
       reportRequired: formData.get("reportRequired") === "true",
+      offerId: formData.get("offerId") || undefined,
     });
 
     if (!parsed.success) {
@@ -97,6 +98,15 @@ export async function submitCandidature(
 
     const data = parsed.data;
     const internshipType = data.internshipType as InternshipType;
+
+    if (data.offerId) {
+      const offer = await prisma.internshipOffer.findFirst({
+        where: { id: data.offerId, isPublished: true },
+      });
+      if (!offer) {
+        return { error: "L'offre sélectionnée est introuvable." };
+      }
+    }
 
     // ===== 2. Récupérer les fichiers du FormData (PDF only, 2 Mo max) =====
     const files: { label: string; file: File }[] = [];
@@ -172,6 +182,7 @@ export async function submitCandidature(
             reportRequired: data.reportRequired,
             status: "PENDING",
             profileId: profile.id,
+            offerId: data.offerId,
           },
         });
 

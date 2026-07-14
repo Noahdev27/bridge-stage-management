@@ -13,6 +13,8 @@ export const candidatureListFiltersSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
+    tutorId: z.string().min(1).optional(),
+    reportRequired: z.enum(["true", "false"]).optional(),
   })
   .refine((data) => !data.from || !data.to || data.from <= data.to, {
     message: "La date de début doit être antérieure ou égale à la date de fin.",
@@ -30,6 +32,11 @@ export function parseCandidatureListFilters(
     type: raw.type && raw.type in InternshipType ? raw.type : undefined,
     from: raw.from || undefined,
     to: raw.to || undefined,
+    tutorId: raw.tutorId || undefined,
+    reportRequired:
+      raw.reportRequired === "true" || raw.reportRequired === "false"
+        ? raw.reportRequired
+        : undefined,
   });
 
   if (!parsed.success) {
@@ -59,3 +66,7 @@ export const requestEvaluationSchema = z.object({
 });
 
 export type RequestEvaluationInput = z.infer<typeof requestEvaluationSchema>;
+
+export const assignTutorSchema = z.object({
+  tutorId: z.string().min(1).nullable(),
+});

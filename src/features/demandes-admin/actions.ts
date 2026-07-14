@@ -123,6 +123,40 @@ export async function saveRequestEvaluation(
   }
 }
 
+export async function assignTutor(
+  requestId: string,
+  tutorId: string | null
+): Promise<AdminActionState> {
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return { error: "Accès non autorisé." };
+    }
+
+    if (tutorId) {
+      const tutor = await prisma.user.findFirst({
+        where: { id: tutorId, role: "TUTOR" },
+      });
+      if (!tutor) {
+        return { error: "Tuteur introuvable." };
+      }
+    }
+
+    await prisma.internshipRequest.update({
+      where: { id: requestId },
+      data: { tutorId },
+    });
+
+    revalidatePath("/admin");
+    revalidatePath(`/admin/${requestId}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error(`[admin-actions] Erreur assignation tuteur ${requestId}:`, error);
+    return { error: "Impossible d'assigner le tuteur." };
+  }
+}
+
 export async function purgeRejectedApplications(): Promise<AdminActionState> {
   try {
     const session = await auth();
@@ -130,6 +164,15 @@ export async function purgeRejectedApplications(): Promise<AdminActionState> {
       return { error: "Accès non autorisé." };
     }
 
+    return runRejectedPurge();
+  } catch (error) {
+    console.error("[admin-actions] Erreur lors de la purge RGPD:", error);
+    return { error: "Une erreur est survenue lors de la purge des dossiers." };
+  }
+}
+
+export async function runRejectedPurge(): Promise<AdminActionState> {
+  try {
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - REJECTED_PURGE_MONTHS);
 
@@ -162,7 +205,7 @@ export async function purgeRejectedApplications(): Promise<AdminActionState> {
 
     return { success: true, purgedCount: outdated.length };
   } catch (error) {
-    console.error("[admin-actions] Erreur lors de la purge RGPD:", error);
+    console.error("[admin-actions] Erreur exécution purge RGPD:", error);
     return { error: "Une erreur est survenue lors de la purge des dossiers." };
   }
 }

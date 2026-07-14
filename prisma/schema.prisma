@@ -1,27 +1,18 @@
-// Schéma Prisma — Bridge, gestion des demandes de stage
-// Base de données : PostgreSQL (cf. cahier des charges).
-// Le stockage des FICHIERS se fait sur Supabase Storage ; seules les URLs
-// des fichiers sont enregistrées ici (modèle Document.url).
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider  = "postgresql"
-  // URL "pooler" (transaction, port 6543) — utilisée par l'application.
   url       = env("DATABASE_URL")
-  // URL "directe" (session, port 5432) — utilisée par les migrations Prisma.
-  // En local (Postgres/Docker), mets la MÊME valeur que DATABASE_URL.
   directUrl = env("DIRECT_URL")
 }
-
-// --- Énumérations -------------------------------------------------------
 
 enum Role {
   ADMIN
   RH
-  // TUTOR -> Phase 2
+  TUTOR
+  CANDIDATE
 }
 
 enum InternshipType {
@@ -30,72 +21,90 @@ enum InternshipType {
 }
 
 enum RequestStatus {
-  PENDING // En attente
-  PROCESS // Traitement en cours
-  ACCEPTED // Acceptée
-  REJECTED // Rejetée
+  PENDING
+  PROCESS
+  ACCEPTED
+  REJECTED
 }
 
-// --- Modèles ------------------------------------------------------------
+enum Department {
+  DEVELOPMENT
+  DESIGN
+  MARKETING
+  NETWORK
+  DATA
+  OTHER
+}
 
-/// Utilisateur du back-office (équipe RH / Admin).
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
-  password  String // toujours stocké HASHÉ (bcrypt)
+  password  String
   name      String?
   role      Role     @default(RH)
   createdAt DateTime @default(now())
 
-  evaluations RequestEvaluation[]
+  evaluations     RequestEvaluation[]
+  tutoredRequests InternshipRequest[] @relation("TutorAssignments")
 }
 
-/// Demande de stage déposée par un candidat.
+model InternshipOffer {
+  id              String         @id @default(cuid())
+  title           String
+  description     String
+  department      Department
+  type            InternshipType
+  durationMonths  Int
+  isPublished     Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+
+  requests InternshipRequest[]
+}
+
 model InternshipRequest {
   id             String         @id @default(cuid())
-  /// Code de suivi NON devinable communiqué au candidat (token aléatoire).
   trackingCode   String         @unique
   type           InternshipType
   status         RequestStatus  @default(PENDING)
-  duration       String // ex. "1 mois", "3 mois"
-  startDate      DateTime // date de début souhaitée
+  duration       String
+  startDate      DateTime
   reportRequired Boolean        @default(false)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  // Relations
   profile    Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId  String     @unique
   documents  Document[]
   evaluation RequestEvaluation?
+
+  tutor   User?   @relation("TutorAssignments", fields: [tutorId], references: [id], onDelete: SetNull)
+  tutorId String?
+
+  offer   InternshipOffer? @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  offerId String?
 }
 
-/// Informations personnelles du candidat liées à une demande.
 model Profile {
   id        String @id @default(cuid())
   firstName String
   lastName  String
   email     String
-  phone     String // téléphone du candidat
+  phone     String
 
-  // Domicile — lieu-dit et coordonnées GPS (cf. CDC)
   lieudit   String
   latitude  Float
   longitude Float
 
-  // Téléphones de deux proches du candidat (cf. CDC)
   relativePhone1 String
   relativePhone2 String
 
   school String
-  field  String // filière
-  level  String // niveau d'étude
+  field  String
+  level  String
 
   request InternshipRequest?
 }
 
-/// Fichier (PDF) joint à une demande. Le binaire vit sur Supabase Storage ;
-/// `url` pointe vers le fichier, `label` indique sa nature (CV, lettre, ...).
 model Document {
   id        String   @id @default(cuid())
   label     String
@@ -106,7 +115,6 @@ model Document {
   requestId String
 }
 
-/// Évaluation interne RH d'une demande (note + commentaire, non visible du candidat).
 model RequestEvaluation {
   id        String   @id @default(cuid())
   rating    Int

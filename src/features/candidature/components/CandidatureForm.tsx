@@ -24,7 +24,7 @@ import { useToast } from "@/shared/ui/ToastProvider";
 
 export type CurrentStep = 1 | 2 | 3 | 4;
 
-export function CandidatureForm() {
+export function CandidatureForm({ offerId }: { offerId?: string }) {
   // État du formulaire multi-étapes
   const [currentStep, setCurrentStep] = useState<CurrentStep>(1);
 
@@ -182,7 +182,10 @@ export function CandidatureForm() {
       formData.append(key, file);
     });
 
-    // Appeler l'action serveur
+    if (offerId) {
+      formData.set("offerId", offerId);
+    }
+
     await formAction(formData);
   };
 

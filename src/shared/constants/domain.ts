@@ -63,3 +63,22 @@ export const START_DATE_ALERT_DAYS = 15;
 
 /** Rétention RGPD : dossiers rejetés à purger après X mois. */
 export const REJECTED_PURGE_MONTHS = 6;
+
+export const DEPARTMENT_LABELS: Record<
+  "DEVELOPMENT" | "DESIGN" | "MARKETING" | "NETWORK" | "DATA" | "OTHER",
+  string
+> = {
+  DEVELOPMENT: "Développement",
+  DESIGN: "Design",
+  MARKETING: "Marketing",
+  NETWORK: "Réseaux / Infrastructure",
+  DATA: "Data",
+  OTHER: "Autre",
+};
+
+export const ROLE_LABELS: Record<"ADMIN" | "RH" | "TUTOR" | "CANDIDATE", string> = {
+  ADMIN: "Administrateur",
+  RH: "Ressources humaines",
+  TUTOR: "Tuteur",
+  CANDIDATE: "Candidat",
+};

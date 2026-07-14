@@ -84,15 +84,23 @@ export default function Home() {
                 dossier en temps réel, et laissez notre équipe vous accompagner.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-                <Link href="/candidature" className="btn btn-primary btn-lg gap-2">
+                <Link href="/offres" className="btn btn-primary btn-lg gap-2">
                   <FileText className="w-5 h-5" aria-hidden="true" />
+                  Voir les offres
+                </Link>
+                <Link href="/candidature" className="btn btn-outline btn-lg gap-2">
                   Déposer ma candidature
                 </Link>
-                <Link href="/suivi" className="btn btn-outline btn-lg gap-2">
+                <Link href="/suivi" className="btn btn-ghost btn-lg gap-2">
                   <Search className="w-5 h-5" aria-hidden="true" />
                   Suivre ma demande
                 </Link>
               </div>
+              <p className="mt-4 text-sm text-base-content/50">
+                <Link href="/candidat/login" className="link link-hover">
+                  Espace candidat
+                </Link>
+              </p>
             </div>
           </section>
 

@@ -19,7 +19,9 @@ const TYPE_FILTERS = [
   { label: "Professionnel", value: InternshipType.PROFESSIONAL },
 ];
 
-export function CandidatureFilters() {
+type TutorOption = { id: string; name: string | null; email: string };
+
+export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -27,6 +29,8 @@ export function CandidatureFilters() {
   const currentType = searchParams.get("type") || "";
   const currentFrom = searchParams.get("from") || "";
   const currentTo = searchParams.get("to") || "";
+  const currentTutorId = searchParams.get("tutorId") || "";
+  const currentReport = searchParams.get("reportRequired") || "";
 
   const [from, setFrom] = useState(currentFrom);
   const [to, setTo] = useState(currentTo);
@@ -34,39 +38,19 @@ export function CandidatureFilters() {
   const pushParams = (updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
     for (const [key, value] of Object.entries(updates)) {
-      if (!value) {
-        params.delete(key);
-      } else {
-        params.set(key, value);
-      }
+      if (!value) params.delete(key);
+      else params.set(key, value);
     }
     router.push(`/admin?${params.toString()}`);
-  };
-
-  const handleStatusChange = (status: string) => {
-    pushParams({ status: status === "ALL" ? null : status });
-  };
-
-  const handleTypeChange = (type: string) => {
-    pushParams({ type: type || null });
-  };
-
-  const handleDateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    pushParams({
-      from: from || null,
-      to: to || null,
-    });
   };
 
   const handleReset = () => {
     setFrom("");
     setTo("");
     const params = new URLSearchParams(searchParams.toString());
-    params.delete("status");
-    params.delete("type");
-    params.delete("from");
-    params.delete("to");
+    ["status", "type", "from", "to", "tutorId", "reportRequired"].forEach((k) =>
+      params.delete(k)
+    );
     router.push(`/admin?${params.toString()}`);
   };
 
@@ -74,7 +58,9 @@ export function CandidatureFilters() {
     currentStatus !== "ALL" ||
     !!currentType ||
     !!currentFrom ||
-    !!currentTo;
+    !!currentTo ||
+    !!currentTutorId ||
+    !!currentReport;
 
   return (
     <div className="space-y-4 mb-6">
@@ -83,7 +69,9 @@ export function CandidatureFilters() {
           <button
             key={filter.value}
             type="button"
-            onClick={() => handleStatusChange(filter.value)}
+            onClick={() =>
+              pushParams({ status: filter.value === "ALL" ? null : filter.value })
+            }
             className={`tab tab-sm md:tab-md transition-all ${
               currentStatus === filter.value
                 ? "tab-active bg-primary text-primary-content font-semibold"
@@ -102,7 +90,7 @@ export function CandidatureFilters() {
             Filtres avancés
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <label className="form-control">
               <span className="label py-1">
                 <span className="label-text font-semibold">Type de stage</span>
@@ -110,8 +98,7 @@ export function CandidatureFilters() {
               <select
                 className="select select-bordered select-sm w-full"
                 value={currentType}
-                onChange={(e) => handleTypeChange(e.target.value)}
-                aria-label="Filtrer par type de stage"
+                onChange={(e) => pushParams({ type: e.target.value || null })}
               >
                 {TYPE_FILTERS.map((option) => (
                   <option key={option.value || "all"} value={option.value}>
@@ -121,52 +108,86 @@ export function CandidatureFilters() {
               </select>
             </label>
 
+            <label className="form-control">
+              <span className="label py-1">
+                <span className="label-text font-semibold">Tuteur</span>
+              </span>
+              <select
+                className="select select-bordered select-sm w-full"
+                value={currentTutorId}
+                onChange={(e) => pushParams({ tutorId: e.target.value || null })}
+              >
+                <option value="">Tous les tuteurs</option>
+                {tutors.map((tutor) => (
+                  <option key={tutor.id} value={tutor.id}>
+                    {tutor.name || tutor.email}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="form-control">
+              <span className="label py-1">
+                <span className="label-text font-semibold">Rapport à produire</span>
+              </span>
+              <select
+                className="select select-bordered select-sm w-full"
+                value={currentReport}
+                onChange={(e) =>
+                  pushParams({ reportRequired: e.target.value || null })
+                }
+              >
+                <option value="">Tous</option>
+                <option value="true">Oui</option>
+                <option value="false">Non</option>
+              </select>
+            </label>
+
             <form
-              onSubmit={handleDateSubmit}
-              className="md:col-span-2 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto] gap-3 items-end"
+              onSubmit={(e) => {
+                e.preventDefault();
+                pushParams({ from: from || null, to: to || null });
+              }}
+              className="grid grid-cols-2 gap-2 items-end xl:col-span-1 md:col-span-2"
             >
               <label className="form-control">
                 <span className="label py-1">
-                  <span className="label-text font-semibold">Soumis du</span>
+                  <span className="label-text font-semibold">Du</span>
                 </span>
                 <input
                   type="date"
                   className="input input-bordered input-sm w-full"
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
-                  aria-label="Date de début de soumission"
                 />
               </label>
-
               <label className="form-control">
                 <span className="label py-1">
-                  <span className="label-text font-semibold">Soumis au</span>
+                  <span className="label-text font-semibold">Au</span>
                 </span>
                 <input
                   type="date"
                   className="input input-bordered input-sm w-full"
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
-                  aria-label="Date de fin de soumission"
                 />
               </label>
-
-              <button type="submit" className="btn btn-primary btn-sm">
-                Appliquer
+              <button type="submit" className="btn btn-primary btn-sm col-span-2">
+                Appliquer les dates
               </button>
-
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="btn btn-ghost btn-sm gap-1"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-                  Réinitialiser
-                </button>
-              )}
             </form>
           </div>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="btn btn-ghost btn-sm gap-1 self-start"
+            >
+              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+              Réinitialiser
+            </button>
+          )}
         </div>
       </div>
     </div>

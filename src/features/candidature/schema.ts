@@ -110,6 +110,7 @@ export const step2ParcoursSchema = z.object({
       "La date de début doit être dans le futur."
     ),
   reportRequired: z.boolean().default(false),
+  offerId: z.string().min(1).optional(),
 }).superRefine((data, ctx) => {
   const duration = Number(data.duration);
   const minDuration = MIN_DURATION_MONTHS[data.internshipType];
