@@ -57,3 +57,9 @@ export const MIN_DURATION_MONTHS: Record<InternshipType, number> = {
   ACADEMIC: 1,
   PROFESSIONAL: 3,
 };
+
+/** Seuil d'alerte RH : dossiers en attente dont la date de début arrive sous X jours. */
+export const START_DATE_ALERT_DAYS = 15;
+
+/** Rétention RGPD : dossiers rejetés à purger après X mois. */
+export const REJECTED_PURGE_MONTHS = 6;

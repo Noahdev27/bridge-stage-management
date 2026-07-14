@@ -107,3 +107,38 @@ export async function deleteStoragePaths(paths: string[]): Promise<void> {
     console.error("[supabase] Échec de suppression:", error.message);
   }
 }
+
+export function extractStoragePathFromUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(
+      /\/storage\/v1\/object\/(?:sign|public)\/[^/]+\/(.+)$/
+    );
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteRequestDocumentsFolder(
+  requestId: string,
+  createdAt: Date
+): Promise<void> {
+  const datePrefix = `${createdAt.getFullYear()}/${String(createdAt.getMonth() + 1).padStart(2, "0")}`;
+  const folderPath = `candidatures/${datePrefix}/${requestId}`;
+
+  const { data, error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .list(folderPath);
+
+  if (error) {
+    console.error("[supabase] Échec du listage:", error.message);
+    return;
+  }
+
+  const paths = (data ?? [])
+    .filter((item) => item.name)
+    .map((item) => `${folderPath}/${item.name}`);
+
+  await deleteStoragePaths(paths);
+}

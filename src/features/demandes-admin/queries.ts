@@ -190,11 +190,29 @@ export async function getCandidatures(filters: CandidatureListFilters = {}) {
       email: req.profile.email,
       internshipType: req.type,
       createdAt: req.createdAt,
+      startDate: req.startDate,
       status: req.status,
     }));
   } catch (error) {
     console.error("[queries] Erreur lors de la récupération des candidatures:", error);
     return [];
+  }
+}
+
+export async function countRejectedEligibleForPurge(months: number): Promise<number> {
+  try {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+
+    return await prisma.internshipRequest.count({
+      where: {
+        status: "REJECTED",
+        updatedAt: { lte: cutoff },
+      },
+    });
+  } catch (error) {
+    console.error("[queries] Erreur lors du décompte des dossiers à purger:", error);
+    return 0;
   }
 }
 

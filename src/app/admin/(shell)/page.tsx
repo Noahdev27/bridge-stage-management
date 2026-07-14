@@ -1,6 +1,7 @@
 import { auth } from "@/shared/auth/auth";
 import { redirect } from "next/navigation";
 import {
+  countRejectedEligibleForPurge,
   getCandidatures,
   getMonthlyStatsBreakdown,
   getRequestStats,
@@ -10,9 +11,15 @@ import { CandidatureFilters } from "@/features/demandes-admin/components/Candida
 import { parseCandidatureListFilters } from "@/features/demandes-admin/schema";
 import { PeriodFilter } from "@/features/demandes-admin/components/PeriodFilter";
 import { StatsDashboard } from "@/features/demandes-admin/components/StatsDashboard";
+import { PurgeRejectedPanel } from "@/features/demandes-admin/components/PurgeRejectedPanel";
+import { daysUntil, isStartDateAlert } from "@/features/demandes-admin/deadline";
 import Link from "next/link";
-import { GraduationCap, Briefcase, ArrowRight } from "lucide-react";
-import { STATUS_LABELS } from "@/shared/constants/domain";
+import { GraduationCap, Briefcase, ArrowRight, TriangleAlert } from "lucide-react";
+import {
+  REJECTED_PURGE_MONTHS,
+  START_DATE_ALERT_DAYS,
+  STATUS_LABELS,
+} from "@/shared/constants/domain";
 import type { RequestStatus } from "@prisma/client";
 
 interface AdminPageProps {
@@ -41,6 +48,14 @@ function parseMonth(value: string | undefined): number | undefined {
     : undefined;
 }
 
+function alertBadgeLabel(startDate: Date): string {
+  const remaining = daysUntil(startDate);
+  if (remaining < 0) return "En retard";
+  if (remaining === 0) return "Début aujourd'hui";
+  if (remaining === 1) return "Début demain";
+  return `J-${remaining}`;
+}
+
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const session = await auth();
   if (!session) {
@@ -54,12 +69,18 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   const listFilters = parseCandidatureListFilters(params);
 
-  const [candidatures, stats, monthlyBreakdown, years] = await Promise.all([
-    getCandidatures(listFilters),
-    getRequestStats(year, month),
-    getMonthlyStatsBreakdown(year),
-    getStatsAvailableYears(),
-  ]);
+  const [candidatures, stats, monthlyBreakdown, years, purgeEligibleCount] =
+    await Promise.all([
+      getCandidatures(listFilters),
+      getRequestStats(year, month),
+      getMonthlyStatsBreakdown(year),
+      getStatsAvailableYears(),
+      countRejectedEligibleForPurge(REJECTED_PURGE_MONTHS),
+    ]);
+
+  const urgentCount = candidatures.filter((cand) =>
+    isStartDateAlert(cand.status, cand.startDate, START_DATE_ALERT_DAYS)
+  ).length;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -101,8 +122,19 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
       </div>
 
+      <PurgeRejectedPanel eligibleCount={purgeEligibleCount} />
+
       <div>
-        <h2 className="text-xl font-bold mb-4">Liste des candidatures</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+          <h2 className="text-xl font-bold">Liste des candidatures</h2>
+          {urgentCount > 0 && (
+            <span className="badge badge-warning gap-1.5 font-semibold">
+              <TriangleAlert className="w-3.5 h-3.5" aria-hidden="true" />
+              {urgentCount} dossier(s) urgent(s) (≤ {START_DATE_ALERT_DAYS}{" "}
+              jours)
+            </span>
+          )}
+        </div>
         <CandidatureFilters />
 
         <div className="overflow-x-auto border border-base-300 rounded-xl bg-base-100 shadow-sm">
@@ -112,6 +144,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <th>Candidat</th>
                 <th>Type de Stage</th>
                 <th>Date de Soumission</th>
+                <th>Début souhaité</th>
                 <th>Statut</th>
                 <th className="text-right">Actions</th>
               </tr>
@@ -119,61 +152,88 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <tbody>
               {candidatures.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-base-content/50">
+                  <td colSpan={6} className="text-center py-12 text-base-content/50">
                     Aucune candidature trouvée pour ces critères.
                   </td>
                 </tr>
               ) : (
-                candidatures.map((cand) => (
-                  <tr key={cand.id} className="hover">
-                    <td>
-                      <div className="font-bold">
-                        {cand.firstName} {cand.lastName}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="inline-flex items-center gap-1.5 font-medium">
-                        {cand.internshipType === "ACADEMIC" ? (
-                          <GraduationCap
-                            className="w-4 h-4 text-primary"
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          <Briefcase
-                            className="w-4 h-4 text-primary"
-                            aria-hidden="true"
-                          />
+                candidatures.map((cand) => {
+                  const urgent = isStartDateAlert(
+                    cand.status,
+                    cand.startDate,
+                    START_DATE_ALERT_DAYS
+                  );
+
+                  return (
+                    <tr
+                      key={cand.id}
+                      className={`hover ${urgent ? "bg-warning/10" : ""}`}
+                    >
+                      <td>
+                        <div className="font-bold">
+                          {cand.firstName} {cand.lastName}
+                        </div>
+                        {urgent && (
+                          <span className="badge badge-warning badge-sm mt-1 gap-1">
+                            <TriangleAlert
+                              className="w-3 h-3"
+                              aria-hidden="true"
+                            />
+                            {alertBadgeLabel(cand.startDate)}
+                          </span>
                         )}
-                        {cand.internshipType === "ACADEMIC"
-                          ? "Académique"
-                          : "Professionnel"}
-                      </span>
-                    </td>
-                    <td className="text-sm text-base-content/70">
-                      {new Date(cand.createdAt).toLocaleDateString("fr-FR", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${getStatusBadge(cand.status)} font-semibold px-2.5 py-1`}
-                      >
-                        {STATUS_LABELS[cand.status as RequestStatus]}
-                      </span>
-                    </td>
-                    <td className="text-right">
-                      <Link
-                        href={`/admin/${cand.id}`}
-                        className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-1"
-                      >
-                        Voir le dossier
-                        <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td>
+                        <span className="inline-flex items-center gap-1.5 font-medium">
+                          {cand.internshipType === "ACADEMIC" ? (
+                            <GraduationCap
+                              className="w-4 h-4 text-primary"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Briefcase
+                              className="w-4 h-4 text-primary"
+                              aria-hidden="true"
+                            />
+                          )}
+                          {cand.internshipType === "ACADEMIC"
+                            ? "Académique"
+                            : "Professionnel"}
+                        </span>
+                      </td>
+                      <td className="text-sm text-base-content/70">
+                        {new Date(cand.createdAt).toLocaleDateString("fr-FR", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="text-sm text-base-content/70">
+                        {new Date(cand.startDate).toLocaleDateString("fr-FR", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td>
+                        <span
+                          className={`badge ${getStatusBadge(cand.status)} font-semibold px-2.5 py-1`}
+                        >
+                          {STATUS_LABELS[cand.status as RequestStatus]}
+                        </span>
+                      </td>
+                      <td className="text-right">
+                        <Link
+                          href={`/admin/${cand.id}`}
+                          className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-1"
+                        >
+                          Voir le dossier
+                          <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

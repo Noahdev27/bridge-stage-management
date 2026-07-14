@@ -5,10 +5,17 @@ import { prisma } from "@/shared/db/prisma";
 import { auth } from "@/shared/auth/auth";
 import { notifyStatusChange } from "@/features/notifications/actions/send-notification";
 import { requestEvaluationSchema } from "./schema";
+import { REJECTED_PURGE_MONTHS } from "@/shared/constants/domain";
+import {
+  deleteRequestDocumentsFolder,
+  deleteStoragePaths,
+  extractStoragePathFromUrl,
+} from "@/shared/storage/supabase";
 
 export type AdminActionState = {
   error?: string;
   success?: boolean;
+  purgedCount?: number;
 };
 
 export async function updateCandidatureStatus(
@@ -113,5 +120,49 @@ export async function saveRequestEvaluation(
       error
     );
     return { error: "Une erreur est survenue lors de l'enregistrement." };
+  }
+}
+
+export async function purgeRejectedApplications(): Promise<AdminActionState> {
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return { error: "Accès non autorisé." };
+    }
+
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - REJECTED_PURGE_MONTHS);
+
+    const outdated = await prisma.internshipRequest.findMany({
+      where: {
+        status: "REJECTED",
+        updatedAt: { lte: cutoff },
+      },
+      include: {
+        documents: true,
+        profile: { select: { id: true } },
+      },
+    });
+
+    if (outdated.length === 0) {
+      return { success: true, purgedCount: 0 };
+    }
+
+    for (const request of outdated) {
+      const pathsFromUrls = request.documents
+        .map((doc) => extractStoragePathFromUrl(doc.url))
+        .filter((path): path is string => !!path);
+
+      await deleteStoragePaths(pathsFromUrls);
+      await deleteRequestDocumentsFolder(request.id, request.createdAt);
+      await prisma.profile.delete({ where: { id: request.profile.id } });
+    }
+
+    revalidatePath("/admin");
+
+    return { success: true, purgedCount: outdated.length };
+  } catch (error) {
+    console.error("[admin-actions] Erreur lors de la purge RGPD:", error);
+    return { error: "Une erreur est survenue lors de la purge des dossiers." };
   }
 }
