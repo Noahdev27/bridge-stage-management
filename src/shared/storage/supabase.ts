@@ -16,7 +16,11 @@ export const supabase = createClient(supabaseUrl ?? "", supabaseServiceKey ?? ""
 
 export const DOCUMENTS_BUCKET = storageBucketName;
 
-const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7;
+/**
+ * Durée de vie d'une URL de lecture. Volontairement courte : l'URL n'est plus
+ * stockée en base mais re-signée à chaque consultation via /api/documents/[id].
+ */
+const SIGNED_URL_TTL_SECONDS = 5 * 60;
 
 export type StoredDocument = {
   storagePath: string;
@@ -46,7 +50,7 @@ function buildStoragePath(
   return `${folderPath}/${buildSafeFileName(fileNameHint)}.${extension}`;
 }
 
-async function createSignedUrl(storagePath: string): Promise<string> {
+export async function createSignedUrl(storagePath: string): Promise<string> {
   const { data, error } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
     .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);

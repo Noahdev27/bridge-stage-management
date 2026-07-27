@@ -1,5 +1,5 @@
-import { auth } from "@/shared/auth/auth";
 import { redirect } from "next/navigation";
+import { AuthorizationError, MANAGER_ROLES, requireStaff } from "@/shared/auth/guards";
 import {
   countRejectedEligibleForPurge,
   getCandidatures,
@@ -14,14 +14,13 @@ import { PeriodFilter } from "@/features/demandes-admin/components/PeriodFilter"
 import { StatsDashboard } from "@/features/demandes-admin/components/StatsDashboard";
 import { PurgeRejectedPanel } from "@/features/demandes-admin/components/PurgeRejectedPanel";
 import { daysUntil, isStartDateAlert } from "@/features/demandes-admin/deadline";
+import { StatusBadge } from "@/shared/ui/StatusBadge";
 import Link from "next/link";
 import { GraduationCap, Briefcase, ArrowRight, TriangleAlert } from "lucide-react";
 import {
   REJECTED_PURGE_MONTHS,
   START_DATE_ALERT_DAYS,
-  STATUS_LABELS,
 } from "@/shared/constants/domain";
-import type { RequestStatus } from "@prisma/client";
 
 interface AdminPageProps {
   searchParams: Promise<{
@@ -60,10 +59,15 @@ function alertBadgeLabel(startDate: Date): string {
 }
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
-  const session = await auth();
-  if (!session) {
-    redirect("/admin/login");
+  let viewer;
+  try {
+    viewer = await requireStaff();
+  } catch (error) {
+    if (error instanceof AuthorizationError) redirect("/admin/login");
+    throw error;
   }
+
+  const isManager = MANAGER_ROLES.includes(viewer.role);
 
   const params = await searchParams;
   const currentYear = new Date().getFullYear();
@@ -74,32 +78,19 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   const [candidatures, stats, monthlyBreakdown, years, purgeEligibleCount, tutors] =
     await Promise.all([
-      getCandidatures(listFilters),
+      getCandidatures(listFilters, viewer),
       getRequestStats(year, month),
       getMonthlyStatsBreakdown(year),
       getStatsAvailableYears(),
-      countRejectedEligibleForPurge(REJECTED_PURGE_MONTHS),
+      isManager
+        ? countRejectedEligibleForPurge(REJECTED_PURGE_MONTHS)
+        : Promise.resolve(0),
       getTutors(),
     ]);
 
   const urgentCount = candidatures.filter((cand) =>
     isStartDateAlert(cand.status, cand.startDate, START_DATE_ALERT_DAYS)
   ).length;
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return "badge-warning";
-      case "PROCESS":
-        return "badge-info";
-      case "ACCEPTED":
-        return "badge-success text-white";
-      case "REJECTED":
-        return "badge-error text-white";
-      default:
-        return "badge-ghost";
-    }
-  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -126,7 +117,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
       </div>
 
-      <PurgeRejectedPanel eligibleCount={purgeEligibleCount} />
+      {isManager && <PurgeRejectedPanel eligibleCount={purgeEligibleCount} />}
 
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
@@ -220,11 +211,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         })}
                       </td>
                       <td>
-                        <span
-                          className={`badge ${getStatusBadge(cand.status)} font-semibold px-2.5 py-1`}
-                        >
-                          {STATUS_LABELS[cand.status as RequestStatus]}
-                        </span>
+                        <StatusBadge status={cand.status} size="md" />
                       </td>
                       <td className="text-right">
                         <Link

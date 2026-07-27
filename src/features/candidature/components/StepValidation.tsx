@@ -217,8 +217,8 @@ export function StepValidation({
           aria-hidden="true"
         />
         <p className="text-sm text-base-content/80">
-          Vérifiez vos informations avant l'envoi. Après soumission, votre demande
-          sera examinée par l'équipe RH et un{" "}
+          Vérifiez vos informations avant l&apos;envoi. Après soumission, votre demande
+          sera examinée par l&apos;équipe RH et un{" "}
           <span className="font-semibold text-secondary">code de suivi</span> vous
           sera envoyé par email.
         </p>

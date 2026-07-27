@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runRejectedPurge } from "@/features/demandes-admin/actions";
+import { revalidatePath } from "next/cache";
+import { runRejectedPurge } from "@/features/demandes-admin/purge";
 
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -9,13 +10,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
-  const result = await runRejectedPurge();
-  if (result.error) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
-  }
+  try {
+    const { purgedCount } = await runRejectedPurge();
+    revalidatePath("/admin");
 
-  return NextResponse.json({
-    success: true,
-    purgedCount: result.purgedCount ?? 0,
-  });
+    return NextResponse.json({ success: true, purgedCount });
+  } catch (error) {
+    console.error("[cron] Erreur exécution purge RGPD:", error);
+    return NextResponse.json(
+      { error: "Une erreur est survenue lors de la purge des dossiers." },
+      { status: 500 }
+    );
+  }
 }

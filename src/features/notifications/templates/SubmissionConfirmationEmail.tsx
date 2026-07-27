@@ -1,4 +1,4 @@
-import { Html, Body, Container, Heading, Text, Section, Hr, Img } from '@react-email/components';
+import { Html, Body, Container, Heading, Text, Section, Hr } from '@react-email/components';
 import * as React from 'react';
 
 // Palette Bridge extraite du MVP
@@ -29,12 +29,12 @@ export default function SubmissionConfirmationEmail({
           </Text>
           
           <Text style={{ fontSize: '16px', color: colors.text }}>
-            Nous avons bien reçu ta candidature pour un stage chez <strong>Bridge Technologies Solutions</strong>. 
-            Ton dossier est actuellement en cours d'enregistrement.
+            Nous avons bien reçu votre candidature pour un stage chez <strong>Bridge Technologies Solutions</strong>.
+            Votre dossier est enregistré et sera examiné par notre équipe RH.
           </Text>
 
           <Section style={{ backgroundColor: '#f0f0f0', padding: '15px', borderRadius: '5px', textAlign: 'center' }}>
-            <Text style={{ margin: '0', fontSize: '14px', color: '#555' }}>Ton code de suivi :</Text>
+            <Text style={{ margin: '0', fontSize: '14px', color: '#555' }}>Votre code de suivi :</Text>
             <Text style={{ margin: '5px 0 0 0', fontSize: '22px', fontWeight: 'bold', color: colors.primary }}>
               {trackingCode}
             </Text>
@@ -43,7 +43,7 @@ export default function SubmissionConfirmationEmail({
           <Hr style={{ margin: '20px 0', border: `1px solid ${colors.background}` }} />
           
           <Text style={{ fontSize: '12px', color: '#878786', textAlign: 'center' }}>
-            Conserve précieusement ce code pour suivre l'état de ton dossier sur notre plateforme.
+            Conservez précieusement ce code pour suivre l&apos;état de votre dossier sur notre plateforme.
           </Text>
         </Container>
       </Body>

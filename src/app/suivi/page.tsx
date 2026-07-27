@@ -93,7 +93,7 @@ export default function SuiviPage() {
             className="text-sm link link-hover text-primary font-medium inline-flex items-center gap-1"
           >
             <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-            Retour à l'accueil
+            Retour à l&apos;accueil
           </Link>
           <h1 className="text-3xl font-bold tracking-tight mt-3 text-secondary">
             Suivre ma candidature

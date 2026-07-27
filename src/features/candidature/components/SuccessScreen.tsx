@@ -56,7 +56,7 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
           Candidature envoyée !
         </h1>
         <p className="text-base-content/60 mb-6">
-          Merci pour votre candidature. Notre équipe RH va l'examiner rapidement.
+          Merci pour votre candidature. Notre équipe RH va l&apos;examiner rapidement.
         </p>
 
         <div className="rounded-box border border-base-300 bg-base-100 p-6 mb-6">
@@ -104,7 +104,7 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
           </Link>
           <Link href="/" className="btn btn-outline gap-2">
             <Home className="w-4 h-4" aria-hidden="true" />
-            Retourner à l'accueil
+            Retourner à l&apos;accueil
           </Link>
         </div>
 
@@ -115,7 +115,7 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
           </p>
           <ul className="text-xs text-base-content/60 space-y-1 list-disc list-inside">
             <li>Votre code de suivi est unique et non transférable.</li>
-            <li>Conservez-le pour consulter l'état de votre dossier.</li>
+            <li>Conservez-le pour consulter l&apos;état de votre dossier.</li>
             <li>Notre équipe reviendra vers vous sous 5 à 10 jours ouvrables.</li>
           </ul>
         </div>

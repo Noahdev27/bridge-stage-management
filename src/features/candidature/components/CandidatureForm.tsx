@@ -21,6 +21,7 @@ import { StepValidation } from "./StepValidation";
 import { SuccessScreen } from "./SuccessScreen";
 import { CandidatureFormSkeleton } from "./CandidatureFormSkeleton";
 import { useToast } from "@/shared/ui/ToastProvider";
+import { REQUIRED_DOCUMENTS } from "@/shared/constants/domain";
 
 export type CurrentStep = 1 | 2 | 3 | 4;
 
@@ -126,15 +127,26 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
     return true;
   };
 
-  // Validation de l'étape 3 (documents)
-  const validateStep3 = (): boolean => {
+  // Validation de l'étape 3 : le dossier doit être complet pour le type de
+  // stage choisi (cf. Annexe A du cahier des charges), pas seulement non vide.
+  const missingDocuments = ((): string[] => {
     const internshipType = step2Data.internshipType as InternshipType | undefined;
-    if (!internshipType) {
-      return false;
-    }
-    // La validation des documents est faite côté composant StepDocuments
-    // Ici on ne fait qu'une vérification basique
-    return uploadedFiles.size > 0;
+    if (!internshipType) return [];
+    return REQUIRED_DOCUMENTS[internshipType].filter(
+      (label) => !uploadedFiles.has(label)
+    );
+  })();
+
+  const isDossierComplete =
+    !!step2Data.internshipType && missingDocuments.length === 0;
+
+  const validateStep3 = (): boolean => {
+    if (isDossierComplete) return true;
+    showToast({
+      type: "error",
+      message: `Dossier incomplet : ${missingDocuments.length} document(s) manquant(s).`,
+    });
+    return false;
   };
 
   // Navigation
@@ -332,7 +344,7 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
         ) : (
           <button
             type="submit"
-            disabled={uploadedFiles.size === 0 || isPending}
+            disabled={!isDossierComplete || isPending}
             className="btn btn-success flex-1 gap-2"
           >
             <Send className="w-4 h-4" aria-hidden="true" />

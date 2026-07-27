@@ -1,13 +1,27 @@
 import { prisma } from "@/shared/db/prisma";
 import { RequestStatus, type Prisma } from "@prisma/client";
+import type { SessionUser } from "@/shared/auth/guards";
 import type { CandidatureListFilters } from "./schema";
 
+/**
+ * `received` = toutes les demandes reçues sur la période (cf. CDC : « demandes
+ * reçues / traitées / acceptées / rejetées »), `pending` = celles encore en
+ * attente d'un premier traitement.
+ */
 export type RequestStats = {
   received: number;
+  pending: number;
   processed: number;
   accepted: number;
   rejected: number;
-  total: number;
+};
+
+const EMPTY_STATS: RequestStats = {
+  received: 0,
+  pending: 0,
+  processed: 0,
+  accepted: 0,
+  rejected: 0,
 };
 
 export type MonthlyStats = {
@@ -48,17 +62,17 @@ function getPeriodBounds(year: number, month?: number) {
 function buildStatsFromCounts(
   counts: Partial<Record<RequestStatus, number>>
 ): RequestStats {
-  const received = counts.PENDING ?? 0;
+  const pending = counts.PENDING ?? 0;
   const processed = counts.PROCESS ?? 0;
   const accepted = counts.ACCEPTED ?? 0;
   const rejected = counts.REJECTED ?? 0;
 
   return {
-    received,
+    received: pending + processed + accepted + rejected,
+    pending,
     processed,
     accepted,
     rejected,
-    total: received + processed + accepted + rejected,
   };
 }
 
@@ -119,7 +133,7 @@ export async function getRequestStats(
     return buildStatsFromCounts(counts);
   } catch (error) {
     console.error("[queries] Erreur lors du calcul des statistiques:", error);
-    return { received: 0, processed: 0, accepted: 0, rejected: 0, total: 0 };
+    return EMPTY_STATS;
   }
 }
 
@@ -141,15 +155,19 @@ export async function getMonthlyStatsBreakdown(year: number): Promise<MonthlySta
     return MONTH_LABELS.map((label, index) => ({
       month: index + 1,
       label,
-      stats: { received: 0, processed: 0, accepted: 0, rejected: 0, total: 0 },
+      stats: EMPTY_STATS,
     }));
   }
 }
 
 /**
  * Récupère les candidatures filtrées pour la table principale.
+ * Un tuteur ne voit que les dossiers qui lui sont affectés.
  */
-export async function getCandidatures(filters: CandidatureListFilters = {}) {
+export async function getCandidatures(
+  filters: CandidatureListFilters = {},
+  viewer?: SessionUser
+) {
   try {
     const whereClause: Prisma.InternshipRequestWhereInput = {};
 
@@ -181,6 +199,10 @@ export async function getCandidatures(filters: CandidatureListFilters = {}) {
       whereClause.reportRequired = true;
     } else if (filters.reportRequired === "false") {
       whereClause.reportRequired = false;
+    }
+
+    if (viewer?.role === "TUTOR") {
+      whereClause.tutorId = viewer.id;
     }
 
     const candidatures = await prisma.internshipRequest.findMany({
@@ -245,11 +267,15 @@ export async function countRejectedEligibleForPurge(months: number): Promise<num
 
 /**
  * Récupère le dossier complet d'un candidat unique grâce à son ID (Profil + Demande + Documents).
+ * Un tuteur ne peut ouvrir que les dossiers qui lui sont affectés.
  */
-export async function getCandidatureById(id: string) {
+export async function getCandidatureById(id: string, viewer?: SessionUser) {
   try {
-    const candidature = await prisma.internshipRequest.findUnique({
-      where: { id },
+    const candidature = await prisma.internshipRequest.findFirst({
+      where: {
+        id,
+        ...(viewer?.role === "TUTOR" ? { tutorId: viewer.id } : {}),
+      },
       include: {
         profile: true,
         documents: true,

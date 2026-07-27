@@ -10,7 +10,7 @@ import {
 import { validatePdf } from "@/shared/validation/file";
 import { REQUIRED_DOCUMENTS } from "@/shared/constants/domain";
 import { completeApplicationSchema } from "./schema";
-import { notifySubmission } from "@/features/notifications/actions/send-notification";
+import { notifySubmission } from "@/features/notifications/send-notification";
 import { randomBytes } from "crypto";
 import type { InternshipType } from "@prisma/client";
 
@@ -205,20 +205,29 @@ export async function submitCandidature(
     const finalizedPaths: string[] = [];
 
     try {
-      const uploadedDocuments: { label: string; url: string }[] = [];
+      const uploadedDocuments: {
+        label: string;
+        url: string;
+        storagePath: string;
+      }[] = [];
 
       for (const staged of stagedFiles) {
         const moved = await moveDocument(staged.storagePath, finalFolder);
         const pendingIndex = pendingPaths.indexOf(staged.storagePath);
         if (pendingIndex !== -1) pendingPaths.splice(pendingIndex, 1);
         finalizedPaths.push(moved.storagePath);
-        uploadedDocuments.push({ label: staged.label, url: moved.signedUrl });
+        uploadedDocuments.push({
+          label: staged.label,
+          url: moved.signedUrl,
+          storagePath: moved.storagePath,
+        });
       }
 
       await prisma.document.createMany({
         data: uploadedDocuments.map((doc) => ({
           label: doc.label,
           url: doc.url,
+          storagePath: doc.storagePath,
           requestId,
         })),
       });

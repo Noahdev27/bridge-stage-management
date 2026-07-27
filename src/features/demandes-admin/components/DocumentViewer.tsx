@@ -6,16 +6,21 @@ import { FileText, X } from "lucide-react";
 type DocItem = {
   id: string;
   label: string;
-  url: string;
 };
 
 interface DocumentViewerProps {
   documents: DocItem[];
 }
 
+/**
+ * Les pièces jointes sont servies par /api/documents/[id] : la route vérifie la
+ * session puis redirige vers une URL Supabase signée à la demande. Aucun lien
+ * permanent n'est exposé dans le HTML.
+ */
 export function DocumentViewer({ documents }: DocumentViewerProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const active = documents.find((doc) => doc.id === activeId);
+  const activeUrl = active ? `/api/documents/${active.id}` : null;
 
   if (documents.length === 0) {
     return (
@@ -50,13 +55,13 @@ export function DocumentViewer({ documents }: DocumentViewerProps) {
         ))}
       </div>
 
-      {active && (
+      {active && activeUrl && (
         <div className="rounded-box border border-base-300 overflow-hidden bg-base-200">
           <div className="flex items-center justify-between px-3 py-2 border-b border-base-300 bg-base-100">
             <p className="text-sm font-medium truncate">{active.label}</p>
             <div className="flex items-center gap-2">
               <a
-                href={active.url}
+                href={activeUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-ghost btn-xs"
@@ -75,7 +80,7 @@ export function DocumentViewer({ documents }: DocumentViewerProps) {
           </div>
           <iframe
             title={active.label}
-            src={active.url}
+            src={activeUrl}
             className="w-full h-[28rem] bg-base-100"
           />
         </div>

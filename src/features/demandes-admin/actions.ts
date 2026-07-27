@@ -2,15 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/shared/db/prisma";
-import { auth } from "@/shared/auth/auth";
-import { notifyStatusChange } from "@/features/notifications/actions/send-notification";
-import { requestEvaluationSchema } from "./schema";
-import { REJECTED_PURGE_MONTHS } from "@/shared/constants/domain";
+import { AuthorizationError, requireManager } from "@/shared/auth/guards";
 import {
-  deleteRequestDocumentsFolder,
-  deleteStoragePaths,
-  extractStoragePathFromUrl,
-} from "@/shared/storage/supabase";
+  notifyStatusChange,
+  notifyTutorAssignment,
+} from "@/features/notifications/send-notification";
+import { requestEvaluationSchema } from "./schema";
+import { runRejectedPurge } from "./purge";
+import type { RequestStatus } from "@prisma/client";
 
 export type AdminActionState = {
   error?: string;
@@ -18,13 +17,23 @@ export type AdminActionState = {
   purgedCount?: number;
 };
 
+const UNAUTHORIZED: AdminActionState = { error: "Accès non autorisé." };
+
+const ALLOWED_STATUSES: RequestStatus[] = [
+  "PENDING",
+  "PROCESS",
+  "ACCEPTED",
+  "REJECTED",
+];
+
 export async function updateCandidatureStatus(
   id: string,
-  newStatus: "PENDING" | "PROCESS" | "ACCEPTED" | "REJECTED"
+  newStatus: RequestStatus
 ): Promise<AdminActionState> {
   try {
-    const allowedStatuses = ["PENDING", "PROCESS", "ACCEPTED", "REJECTED"];
-    if (!allowedStatuses.includes(newStatus)) {
+    await requireManager();
+
+    if (!ALLOWED_STATUSES.includes(newStatus)) {
       return { error: "Statut de candidature invalide." };
     }
 
@@ -54,6 +63,7 @@ export async function updateCandidatureStatus(
 
     return { success: true };
   } catch (error) {
+    if (error instanceof AuthorizationError) return UNAUTHORIZED;
     console.error(`[admin-actions] Erreur lors de la mise à jour ${id}:`, error);
     return { error: "Une erreur est survenue lors de la mise à jour." };
   }
@@ -65,10 +75,7 @@ export async function saveRequestEvaluation(
   formData: FormData
 ): Promise<AdminActionState> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return { error: "Accès non autorisé." };
-    }
+    const user = await requireManager();
 
     const parsed = requestEvaluationSchema.safeParse({
       rating: formData.get("rating"),
@@ -90,7 +97,7 @@ export async function saveRequestEvaluation(
     }
 
     const author = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { email: user.email },
       select: { id: true },
     });
 
@@ -115,6 +122,7 @@ export async function saveRequestEvaluation(
 
     return { success: true };
   } catch (error) {
+    if (error instanceof AuthorizationError) return UNAUTHORIZED;
     console.error(
       `[admin-actions] Erreur lors de l'enregistrement de l'évaluation ${requestId}:`,
       error
@@ -128,18 +136,26 @@ export async function assignTutor(
   tutorId: string | null
 ): Promise<AdminActionState> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return { error: "Accès non autorisé." };
+    await requireManager();
+
+    const request = await prisma.internshipRequest.findUnique({
+      where: { id: requestId },
+      include: { profile: { select: { firstName: true, lastName: true } } },
+    });
+
+    if (!request) {
+      return { error: "Candidature introuvable." };
     }
 
-    if (tutorId) {
-      const tutor = await prisma.user.findFirst({
-        where: { id: tutorId, role: "TUTOR" },
-      });
-      if (!tutor) {
-        return { error: "Tuteur introuvable." };
-      }
+    const tutor = tutorId
+      ? await prisma.user.findFirst({
+          where: { id: tutorId, role: "TUTOR" },
+          select: { id: true, name: true, email: true },
+        })
+      : null;
+
+    if (tutorId && !tutor) {
+      return { error: "Tuteur introuvable." };
     }
 
     await prisma.internshipRequest.update({
@@ -147,11 +163,24 @@ export async function assignTutor(
       data: { tutorId },
     });
 
+    // Notification dédiée au tuteur nouvellement affecté (cf. CDC Phase 2).
+    if (tutor && tutor.id !== request.tutorId) {
+      await notifyTutorAssignment({
+        to: tutor.email,
+        tutorName: tutor.name,
+        candidateName: `${request.profile.firstName} ${request.profile.lastName}`,
+        internshipType: request.type,
+        startDate: request.startDate,
+        requestId: request.id,
+      });
+    }
+
     revalidatePath("/admin");
     revalidatePath(`/admin/${requestId}`);
 
     return { success: true };
   } catch (error) {
+    if (error instanceof AuthorizationError) return UNAUTHORIZED;
     console.error(`[admin-actions] Erreur assignation tuteur ${requestId}:`, error);
     return { error: "Impossible d'assigner le tuteur." };
   }
@@ -159,53 +188,16 @@ export async function assignTutor(
 
 export async function purgeRejectedApplications(): Promise<AdminActionState> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return { error: "Accès non autorisé." };
-    }
+    await requireManager();
 
-    return runRejectedPurge();
-  } catch (error) {
-    console.error("[admin-actions] Erreur lors de la purge RGPD:", error);
-    return { error: "Une erreur est survenue lors de la purge des dossiers." };
-  }
-}
-
-export async function runRejectedPurge(): Promise<AdminActionState> {
-  try {
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - REJECTED_PURGE_MONTHS);
-
-    const outdated = await prisma.internshipRequest.findMany({
-      where: {
-        status: "REJECTED",
-        updatedAt: { lte: cutoff },
-      },
-      include: {
-        documents: true,
-        profile: { select: { id: true } },
-      },
-    });
-
-    if (outdated.length === 0) {
-      return { success: true, purgedCount: 0 };
-    }
-
-    for (const request of outdated) {
-      const pathsFromUrls = request.documents
-        .map((doc) => extractStoragePathFromUrl(doc.url))
-        .filter((path): path is string => !!path);
-
-      await deleteStoragePaths(pathsFromUrls);
-      await deleteRequestDocumentsFolder(request.id, request.createdAt);
-      await prisma.profile.delete({ where: { id: request.profile.id } });
-    }
+    const { purgedCount } = await runRejectedPurge();
 
     revalidatePath("/admin");
 
-    return { success: true, purgedCount: outdated.length };
+    return { success: true, purgedCount };
   } catch (error) {
-    console.error("[admin-actions] Erreur exécution purge RGPD:", error);
+    if (error instanceof AuthorizationError) return UNAUTHORIZED;
+    console.error("[admin-actions] Erreur lors de la purge RGPD:", error);
     return { error: "Une erreur est survenue lors de la purge des dossiers." };
   }
 }

@@ -179,7 +179,7 @@ export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
       <label className="label -mt-2">
         <span className="label-text-alt text-base-content/50">
           Indiquez les coordonnées décimales de votre domicile (ex. depuis Google Maps).
-          Le plan de localisation reste requis à l'étape « Documents ».
+          Le plan de localisation reste requis à l&apos;étape « Documents ».
         </span>
       </label>
 
@@ -188,7 +188,7 @@ export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
         <div className="form-control">
           <label className="label">
             <span className="label-text font-semibold">
-              Téléphone d'un proche 1 <span className="text-error">*</span>
+              Téléphone d&apos;un proche 1 <span className="text-error">*</span>
             </span>
           </label>
           <input
@@ -214,7 +214,7 @@ export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
         <div className="form-control">
           <label className="label">
             <span className="label-text font-semibold">
-              Téléphone d'un proche 2 <span className="text-error">*</span>
+              Téléphone d&apos;un proche 2 <span className="text-error">*</span>
             </span>
           </label>
           <input

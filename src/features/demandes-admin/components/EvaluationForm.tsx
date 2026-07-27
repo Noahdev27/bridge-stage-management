@@ -43,7 +43,7 @@ export function EvaluationForm({
         </div>
 
         <p className="text-xs text-base-content/50">
-          Visible uniquement par l'équipe RH. N'altère pas le statut de la
+          Visible uniquement par l&apos;équipe RH. N&apos;altère pas le statut de la
           demande.
         </p>
 

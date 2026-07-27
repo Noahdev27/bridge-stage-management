@@ -1,29 +1,43 @@
+import { redirect } from "next/navigation";
 import { getCandidatureById, getTutors } from "@/features/demandes-admin/queries";
+import {
+  AuthorizationError,
+  MANAGER_ROLES,
+  requireStaff,
+} from "@/shared/auth/guards";
 import { EvaluationForm } from "@/features/demandes-admin/components/EvaluationForm";
 import { StatusActionBar } from "@/features/demandes-admin/components/StatusActionBar";
 import { TutorAssignForm } from "@/features/demandes-admin/components/TutorAssignForm";
 import { DocumentViewer } from "@/features/demandes-admin/components/DocumentViewer";
+import { StatusBadge } from "@/shared/ui/StatusBadge";
 import Link from "next/link";
 import {
   ArrowLeft,
   GraduationCap,
   Briefcase,
+  Star,
+  UserCheck,
 } from "lucide-react";
-import {
-  DEPARTMENT_LABELS,
-  STATUS_LABELS,
-} from "@/shared/constants/domain";
-import type { RequestStatus } from "@prisma/client";
+import { DEPARTMENT_LABELS } from "@/shared/constants/domain";
 
 interface DetailAdminPageProps {
   params: Promise<{ id: string }>;
 }
 
 export default async function DetailAdminPage({ params }: DetailAdminPageProps) {
+  let viewer;
+  try {
+    viewer = await requireStaff();
+  } catch (error) {
+    if (error instanceof AuthorizationError) redirect("/admin/login");
+    throw error;
+  }
+
+  const isManager = MANAGER_ROLES.includes(viewer.role);
   const { id } = await params;
   const [candidature, tutors] = await Promise.all([
-    getCandidatureById(id),
-    getTutors(),
+    getCandidatureById(id, viewer),
+    isManager ? getTutors() : Promise.resolve([]),
   ]);
 
   if (!candidature) {
@@ -44,21 +58,6 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
   const { profile, documents, status, type, createdAt, evaluation, tutor, offer } =
     candidature;
 
-  const getStatusBadgeClass = (currentStatus: string) => {
-    switch (currentStatus) {
-      case "PENDING":
-        return "badge-warning text-warning-content";
-      case "PROCESS":
-        return "badge-info text-info-content";
-      case "ACCEPTED":
-        return "badge-success text-white";
-      case "REJECTED":
-        return "badge-error text-white";
-      default:
-        return "badge-ghost";
-    }
-  };
-
   return (
     <main className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
@@ -77,11 +76,7 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
             <h1 className="text-3xl font-bold tracking-tight">
               {profile.firstName} {profile.lastName}
             </h1>
-            <span
-              className={`badge ${getStatusBadgeClass(status)} font-semibold px-2.5 py-1`}
-            >
-              {STATUS_LABELS[status as RequestStatus]}
-            </span>
+            <StatusBadge status={status} size="md" />
           </div>
           <p className="text-base-content/60 mt-1 inline-flex items-center gap-1.5 flex-wrap">
             Demande de stage
@@ -102,7 +97,7 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
           </p>
         </div>
 
-        <StatusActionBar requestId={id} status={status} />
+        {isManager && <StatusActionBar requestId={id} status={status} />}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -228,21 +223,59 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
           </div>
         </div>
 
+        {/* Assignation et évaluation sont réservées à la RH ; le tuteur
+            consulte le dossier qui lui a été confié en lecture seule. */}
         <div className="space-y-6">
-          <TutorAssignForm
-            requestId={candidature.id}
-            currentTutorId={tutor?.id}
-            tutors={tutors}
-          />
-          <EvaluationForm
-            requestId={candidature.id}
-            initialRating={evaluation?.rating}
-            initialComment={evaluation?.comment}
-            lastUpdatedAt={evaluation?.updatedAt}
-            authorLabel={
-              evaluation?.author?.name || evaluation?.author?.email || null
-            }
-          />
+          {isManager ? (
+            <>
+              <TutorAssignForm
+                requestId={candidature.id}
+                currentTutorId={tutor?.id}
+                tutors={tutors}
+              />
+              <EvaluationForm
+                requestId={candidature.id}
+                initialRating={evaluation?.rating}
+                initialComment={evaluation?.comment}
+                lastUpdatedAt={evaluation?.updatedAt}
+                authorLabel={
+                  evaluation?.author?.name || evaluation?.author?.email || null
+                }
+              />
+            </>
+          ) : (
+            <>
+              <div className="card bg-base-100 border border-base-300 shadow-sm">
+                <div className="card-body p-5 gap-2">
+                  <div className="flex items-center gap-2 border-b border-base-200 pb-3">
+                    <UserCheck className="w-5 h-5 text-primary" aria-hidden="true" />
+                    <h2 className="card-title text-lg">Tuteur</h2>
+                  </div>
+                  <p className="text-sm font-medium">
+                    {tutor?.name || tutor?.email || "Aucun tuteur assigné"}
+                  </p>
+                </div>
+              </div>
+              {evaluation && (
+                <div className="card bg-base-100 border border-base-300 shadow-sm">
+                  <div className="card-body p-5 gap-2">
+                    <div className="flex items-center gap-2 border-b border-base-200 pb-3">
+                      <Star className="w-5 h-5 text-primary" aria-hidden="true" />
+                      <h2 className="card-title text-lg">Évaluation interne</h2>
+                    </div>
+                    <p className="text-sm font-medium">
+                      Note : {evaluation.rating} / 5
+                    </p>
+                    {evaluation.comment && (
+                      <p className="text-sm text-base-content/70 whitespace-pre-line">
+                        {evaluation.comment}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </main>

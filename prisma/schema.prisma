@@ -106,10 +106,15 @@ model Profile {
 }
 
 model Document {
-  id        String   @id @default(cuid())
-  label     String
-  url       String
-  createdAt DateTime @default(now())
+  id    String @id @default(cuid())
+  label String
+  /// URL signée générée à l'upload — conservée pour les dossiers antérieurs
+  /// au stockage du chemin. Les lectures passent par /api/documents/[id].
+  url   String
+  /// Chemin du fichier dans le bucket Supabase : permet de re-signer une URL
+  /// de lecture à la demande, sans dépendre de l'expiration de `url`.
+  storagePath String?
+  createdAt   DateTime @default(now())
 
   request   InternshipRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
   requestId String

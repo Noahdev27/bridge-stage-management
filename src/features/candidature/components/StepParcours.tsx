@@ -65,7 +65,7 @@ export function StepParcours({ data, onChange, errors = {} }: StepParcoursProps)
       <div className="form-control">
         <label className="label">
           <span className="label-text font-semibold">
-            Niveau d'étude <span className="text-error">*</span>
+            Niveau d&apos;étude <span className="text-error">*</span>
           </span>
         </label>
         <select

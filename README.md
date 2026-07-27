@@ -61,7 +61,9 @@ src/
 ├─ features/        une fonctionnalité = un dossier complet (UI + logique + données)
 │  ├─ candidature/     formulaire de candidature
 │  ├─ suivi/           suivi par code
-│  ├─ demandes-admin/  back-office RH
+│  ├─ demandes-admin/  back-office RH (liste, stats, tuteurs, évaluation, purge)
+│  ├─ compte-candidat/ inscription et espace candidat
+│  ├─ offres/          offres de stage par département
 │  └─ notifications/   emails transactionnels
 ├─ shared/          code partagé (db, auth, storage, ui, constantes, validation)
 ├─ types/           déclarations TypeScript globales (augmentation NextAuth)
@@ -69,3 +71,24 @@ src/
 ```
 
 Détails et conventions : voir [`GUIDE_STAGIAIRE.md`](./docs/GUIDE_STAGIAIRE.md).
+État de conformité au cahier des charges : [`AUDIT-MVP.md`](./docs/AUDIT-MVP.md).
+
+## Rôles et accès
+
+| Rôle | Accès |
+|---|---|
+| `ADMIN` / `RH` | Back-office complet : statuts, tuteurs, évaluations, purge RGPD |
+| `TUTOR` | Ses dossiers affectés uniquement, en lecture seule |
+| `CANDIDATE` | `/espace-candidat` : ses propres demandes |
+| *(anonyme)* | Candidature, offres, suivi par code |
+
+> ⚠️ Le middleware ne protège que la navigation. Une Server Action est
+> dispatchée par identifiant et peut être appelée depuis n'importe quelle route :
+> **toute action sensible doit revérifier le rôle** via `shared/auth/guards.ts`.
+
+## Tâche planifiée
+
+`vercel.json` déclare un cron quotidien (03 h 00) sur
+`/api/cron/purge-rejected` : suppression des dossiers rejetés depuis plus de
+6 mois (documents Supabase + données personnelles). La route exige l'en-tête
+`Authorization: Bearer $CRON_SECRET`.

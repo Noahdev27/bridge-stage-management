@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import {
   Inbox,
+  Hourglass,
   LoaderCircle,
   CircleCheck,
   CircleX,
@@ -78,16 +79,22 @@ export function StatsDashboard({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <StatCard
           icon={Inbox}
           label="Reçues"
           value={stats.received}
+          accentClass="bg-primary/15 text-primary"
+        />
+        <StatCard
+          icon={Hourglass}
+          label="En attente"
+          value={stats.pending}
           accentClass="bg-warning/15 text-warning"
         />
         <StatCard
           icon={LoaderCircle}
-          label="Traitées"
+          label="En traitement"
           value={stats.processed}
           accentClass="bg-info/15 text-info"
         />
@@ -105,30 +112,33 @@ export function StatsDashboard({
         />
       </div>
 
-      {!month && monthlyBreakdown.some((row) => row.stats.total > 0) && (
+      {!month && monthlyBreakdown.some((row) => row.stats.received > 0) && (
         <div className="overflow-x-auto border border-base-300 rounded-xl bg-base-100 shadow-sm">
           <table className="table table-sm w-full">
             <thead>
               <tr className="bg-base-200/50">
                 <th>Mois</th>
-                <th className="text-right">Reçues</th>
-                <th className="text-right">Traitées</th>
+                <th className="text-right font-semibold">Reçues</th>
+                <th className="text-right">En attente</th>
+                <th className="text-right">En traitement</th>
                 <th className="text-right">Acceptées</th>
                 <th className="text-right">Rejetées</th>
-                <th className="text-right font-semibold">Total</th>
               </tr>
             </thead>
             <tbody>
               {monthlyBreakdown.map((row) => (
-                <tr key={row.month} className={row.stats.total === 0 ? "opacity-40" : ""}>
+                <tr
+                  key={row.month}
+                  className={row.stats.received === 0 ? "opacity-40" : ""}
+                >
                   <td className="font-medium">{row.label}</td>
-                  <td className="text-right tabular-nums">{row.stats.received}</td>
+                  <td className="text-right tabular-nums font-semibold">
+                    {row.stats.received}
+                  </td>
+                  <td className="text-right tabular-nums">{row.stats.pending}</td>
                   <td className="text-right tabular-nums">{row.stats.processed}</td>
                   <td className="text-right tabular-nums">{row.stats.accepted}</td>
                   <td className="text-right tabular-nums">{row.stats.rejected}</td>
-                  <td className="text-right tabular-nums font-semibold">
-                    {row.stats.total}
-                  </td>
                 </tr>
               ))}
             </tbody>
