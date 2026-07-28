@@ -1,18 +1,23 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@/shared/auth/auth";
+import { getToken } from "next-auth/jwt";
 
+/**
+ * Décodage direct du JWT (sans passer par `auth()`) pour éviter d'embarquer
+ * Prisma + bcryptjs dans le bundle Edge du middleware, qui dépasse sinon la
+ * limite de 1 Mo du plan gratuit Vercel.
+ */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
-    const session = await auth();
+    const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
 
-    if (!session) {
+    if (!token) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
 
-    const role = session.user?.role;
+    const role = token.role;
     const isAuthorized = role === "ADMIN" || role === "RH" || role === "TUTOR";
 
     if (!isAuthorized) {
@@ -21,8 +26,8 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/espace-candidat")) {
-    const session = await auth();
-    if (!session || session.user?.role !== "CANDIDATE") {
+    const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
+    if (!token || token.role !== "CANDIDATE") {
       return NextResponse.redirect(new URL("/candidat/login", request.url));
     }
   }
