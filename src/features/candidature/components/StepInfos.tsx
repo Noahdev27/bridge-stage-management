@@ -1,6 +1,7 @@
 "use client";
 
-import { Info } from "lucide-react";
+import { useState } from "react";
+import { Info, MapPin, LoaderCircle } from "lucide-react";
 import type { Step1InfosInput } from "../schema";
 
 interface StepInfosProps {
@@ -9,7 +10,57 @@ interface StepInfosProps {
   errors?: Record<string, string>;
 }
 
+type GeoStatus = "idle" | "pending" | "success" | "error";
+
+// Messages FR pour les codes d'erreur standard de l'API Geolocation.
+function describeGeolocationError(error: GeolocationPositionError): string {
+  switch (error.code) {
+    case error.PERMISSION_DENIED:
+      return "Autorisation refusée. Vous pouvez saisir vos coordonnées manuellement.";
+    case error.POSITION_UNAVAILABLE:
+      return "Position indisponible. Vérifiez votre connexion GPS ou saisissez manuellement.";
+    case error.TIMEOUT:
+      return "Délai dépassé. Réessayez ou saisissez manuellement.";
+    default:
+      return "Impossible de récupérer votre position. Saisissez-la manuellement.";
+  }
+}
+
 export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
+  const [geoMessage, setGeoMessage] = useState<string | null>(null);
+
+  const handleUseCurrentLocation = () => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      setGeoStatus("error");
+      setGeoMessage(
+        "Votre navigateur ne supporte pas la géolocalisation. Saisissez vos coordonnées manuellement."
+      );
+      return;
+    }
+
+    setGeoStatus("pending");
+    setGeoMessage(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        onChange("latitude", position.coords.latitude.toFixed(6));
+        onChange("longitude", position.coords.longitude.toFixed(6));
+        setGeoStatus("success");
+        setGeoMessage("Coordonnées renseignées depuis votre appareil.");
+      },
+      (error) => {
+        setGeoStatus("error");
+        setGeoMessage(describeGeolocationError(error));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10_000,
+        maximumAge: 0,
+      }
+    );
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -130,6 +181,38 @@ export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
         )}
       </div>
 
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <button
+          type="button"
+          onClick={handleUseCurrentLocation}
+          disabled={geoStatus === "pending"}
+          className="btn btn-outline btn-sm gap-2"
+          aria-live="polite"
+        >
+          {geoStatus === "pending" ? (
+            <LoaderCircle
+              className="w-4 h-4 animate-spin"
+              aria-hidden="true"
+            />
+          ) : (
+            <MapPin className="w-4 h-4" aria-hidden="true" />
+          )}
+          {geoStatus === "pending"
+            ? "Recherche de votre position…"
+            : "Utiliser ma position actuelle"}
+        </button>
+        {geoMessage && (
+          <span
+            className={`text-xs ${
+              geoStatus === "error" ? "text-error" : "text-success"
+            }`}
+            role="status"
+          >
+            {geoMessage}
+          </span>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="form-control">
           <label className="label">
@@ -178,7 +261,8 @@ export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
 
       <label className="label -mt-2">
         <span className="label-text-alt text-base-content/50">
-          Indiquez les coordonnées décimales de votre domicile (ex. depuis Google Maps).
+          Utilisez le bouton ci-dessus pour renseigner automatiquement vos
+          coordonnées, ou saisissez-les manuellement (ex. depuis Google Maps).
           Le plan de localisation reste requis à l&apos;étape « Documents ».
         </span>
       </label>
