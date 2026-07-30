@@ -1,14 +1,54 @@
 import { auth, signOut } from "@/shared/auth/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getCandidateRequests } from "@/features/compte-candidat/actions";
+import {
+  getCandidateRequests,
+  isCandidateEmailVerified,
+} from "@/features/compte-candidat/actions";
 import { STATUS_LABELS, TYPE_LABELS } from "@/shared/constants/domain";
-import { LogOut, Search } from "lucide-react";
+import { formatTrackingCode } from "@/shared/tracking/tracking-code";
+import { LogOut, Search, MailWarning } from "lucide-react";
 
 export default async function EspaceCandidatPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "CANDIDATE") {
     redirect("/candidat/login");
+  }
+
+  // Une session ouverte avant la mise en place de la vérification reste valide
+  // (le JWT survit au déploiement) : on renvoie ce cas vers la connexion plutôt
+  // que d'afficher un espace vide et incompréhensible.
+  const isVerified = await isCandidateEmailVerified();
+
+  if (!isVerified) {
+    async function signOutUnverified() {
+      "use server";
+      await signOut({ redirectTo: "/candidat/login" });
+    }
+
+    return (
+      <main className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+        <div className="card bg-base-100 border border-base-300 shadow-xl max-w-md w-full">
+          <div className="card-body items-center text-center gap-3">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-warning/15 text-warning">
+              <MailWarning className="w-9 h-9" aria-hidden="true" />
+            </div>
+            <h1 className="card-title text-secondary">
+              Adresse email non confirmée
+            </h1>
+            <p className="text-sm text-base-content/70">
+              Votre espace s&apos;ouvrira dès que vous aurez cliqué sur le lien
+              de confirmation envoyé à <strong>{session.user.email}</strong>.
+            </p>
+            <form action={signOutUnverified} className="w-full">
+              <button type="submit" className="btn btn-primary w-full">
+                Retour à la connexion
+              </button>
+            </form>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   const requests = await getCandidateRequests();
@@ -63,7 +103,10 @@ export default async function EspaceCandidatPage() {
                   >
                     <div>
                       <p className="font-semibold">
-                        {TYPE_LABELS[req.type]} — {req.trackingCode}
+                        {TYPE_LABELS[req.type]}
+                      </p>
+                      <p className="text-sm font-mono text-base-content/70">
+                        {formatTrackingCode(req.trackingCode)}
                       </p>
                       <p className="text-sm text-base-content/60">
                         Déposée le{" "}

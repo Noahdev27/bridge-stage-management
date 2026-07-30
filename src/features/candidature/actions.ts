@@ -9,6 +9,10 @@ import {
 } from "@/shared/storage/supabase";
 import { validatePdf } from "@/shared/validation/file";
 import { REQUIRED_DOCUMENTS } from "@/shared/constants/domain";
+import {
+  TRACKING_CODE_ALPHABET,
+  TRACKING_CODE_LENGTH,
+} from "@/shared/tracking/tracking-code";
 import { completeApplicationSchema } from "./schema";
 import { notifySubmission } from "@/features/notifications/send-notification";
 import { randomBytes } from "crypto";
@@ -27,10 +31,19 @@ export type ActionState = {
 
 /**
  * Génère un code de suivi aléatoire et non devinable.
- * Format : 8 caractères alphanumériques en majuscules (ex: A7B2K9M1)
+ * 16 caractères tirés d'un alphabet de 32, soit 80 bits d'entropie.
+ *
+ * `octet % 32` est uniforme car 256 est un multiple de 32 : aucun caractère
+ * n'est favorisé, contrairement à un modulo sur un alphabet de taille
+ * quelconque.
  */
 function generateTrackingCode(): string {
-  return randomBytes(4).toString("hex").toUpperCase().substring(0, 8);
+  const bytes = randomBytes(TRACKING_CODE_LENGTH);
+  let code = "";
+  for (const byte of bytes) {
+    code += TRACKING_CODE_ALPHABET[byte % TRACKING_CODE_ALPHABET.length];
+  }
+  return code;
 }
 
 function validateDocumentSet(

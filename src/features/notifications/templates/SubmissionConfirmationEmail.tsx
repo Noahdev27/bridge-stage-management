@@ -1,5 +1,6 @@
 import { Html, Body, Container, Heading, Text, Section, Hr } from '@react-email/components';
 import * as React from 'react';
+import { formatTrackingCode } from '@/shared/tracking/tracking-code';
 
 // Palette Bridge extraite du MVP
 const colors = {
@@ -35,8 +36,8 @@ export default function SubmissionConfirmationEmail({
 
           <Section style={{ backgroundColor: '#f0f0f0', padding: '15px', borderRadius: '5px', textAlign: 'center' }}>
             <Text style={{ margin: '0', fontSize: '14px', color: '#555' }}>Votre code de suivi :</Text>
-            <Text style={{ margin: '5px 0 0 0', fontSize: '22px', fontWeight: 'bold', color: colors.primary }}>
-              {trackingCode}
+            <Text style={{ margin: '5px 0 0 0', fontSize: '20px', fontWeight: 'bold', color: colors.primary, letterSpacing: '1px' }}>
+              {formatTrackingCode(trackingCode)}
             </Text>
           </Section>
 

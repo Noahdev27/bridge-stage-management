@@ -11,7 +11,7 @@ Branche auditée : `mvpprime`. Légende : ✅ conforme · ⚠️ partiel · ❌ 
 |---|---|---|
 | Un candidat soumet une demande complète avec PDF (≤ 2 Mo) | ✅ | `candidature/actions.ts`, `shared/validation/file.ts` (client + serveur) |
 | Demande et fichiers enregistrés (base + Supabase) | ✅ | Transaction Prisma + upload en deux temps (`temp/` → `candidatures/AAAA/MM/<id>`) avec nettoyage en cas d'échec |
-| Code de suivi reçu (écran + email) et statut consultable | ✅ | `randomBytes` (non séquentiel), `SuccessScreen`, `/suivi` |
+| Code de suivi reçu (écran + email) et statut consultable | ✅ | 16 caractères / 80 bits (`shared/tracking/tracking-code.ts`), `SuccessScreen`, `/suivi` |
 | La RH se connecte, voit la liste, lit les PDF, change le statut | ✅ | NextAuth + `/admin`, visionneuse intégrée via `/api/documents/[id]` |
 | Chaque changement de statut déclenche un email | ✅ | `notifyStatusChange`, envoi non bloquant |
 | Application responsive / mobile-first | ✅ | Tailwind + DaisyUI, sidebar repliable, formulaire mobile |
@@ -34,7 +34,7 @@ Branche auditée : `mvpprime`. Légende : ✅ conforme · ⚠️ partiel · ❌ 
 | Champs étendus : domicile (lieudit + GPS), téléphones de deux proches | ✅ | `Profile.lieudit / latitude / longitude / relativePhone1 / relativePhone2`, validés par Zod |
 | Purge RGPD automatique des non-retenus | ✅ | `purge.ts` : rejetés depuis > 6 mois, documents Supabase + données personnelles. Cron quotidien + déclenchement manuel RH. |
 | Gestion des offres de stage par département | ✅ | `InternshipOffer`, page `/offres` filtrable, candidature rattachable à une offre |
-| Compte candidat avec authentification | ✅ | Inscription/connexion, `/espace-candidat` liste les demandes. Le code de suivi reste l'accès sans compte. |
+| Compte candidat avec authentification | ✅ | Inscription avec **confirmation d'adresse obligatoire**, connexion, `/espace-candidat` liste les demandes. Le code de suivi reste l'accès sans compte. |
 
 **Conclusion Phase 2 : conforme.**
 
@@ -60,6 +60,39 @@ Branche auditée : `mvpprime`. Légende : ✅ conforme · ⚠️ partiel · ❌ 
    `notifications/send-notification.tsx` n'est plus un fichier `"use server"`.
 4. **Rôle TUTOR équivalent à RH.** Un tuteur voyait tous les dossiers et pouvait
    changer les statuts. → périmètre restreint à ses affectations, en lecture seule.
+
+### Sécurité — second passage
+
+14. **Inscription candidat sans preuve de détention de l'adresse.** Un candidat
+    qui postule ne crée aucun compte (le parcours ne crée qu'un `Profile`) :
+    aucune ligne `User` n'existait donc pour son email. N'importe qui connaissant
+    l'adresse d'un candidat pouvait s'inscrire avec elle et lire son dossier —
+    `getCandidateRequests` rattache les demandes par `profile.email`, et
+    `/espace-candidat` affiche le **code de suivi**, qui ouvre ensuite `/suivi`
+    (nom, école, type, durée, dates, statut). → confirmation d'adresse
+    obligatoire : `User.emailVerifiedAt` + jeton à usage unique de 256 bits
+    stocké **haché** (SHA-256), valable 24 h
+    (`compte-candidat/verification.ts`). Trois contrôles superposés :
+    `authorize()` refuse la session d'un candidat non vérifié (contrôle qui fait
+    autorité), `loginCandidate` donne le message explicite, et
+    `getCandidateRequests` revérifie en base — un JWT ouvert avant le correctif
+    survivrait sinon au déploiement. Renvoi de l'email possible depuis la page de
+    connexion, avec palier anti-abus de 2 minutes et réponse neutre (ce point
+    d'entrée public ne doit ni inonder une boîte tierce ni révéler qu'une adresse
+    est inscrite).
+15. **Entropie du code de suivi sous le standard du CDC.** L'ancien format
+    (`randomBytes(4)`, 8 caractères hexadécimaux) ne portait que 32 bits, là où
+    le § 8 demande « un token aléatoire non devinable (ex. UUID) », sur une page
+    `/suivi` publique et sans limitation de débit. → 16 caractères tirés d'un
+    alphabet de 32 (Crockford, sans I/L/O/U), soit **80 bits**. Le tirage est
+    uniforme (`octet % 32`, exact car 256 est multiple de 32). La saisie tolère
+    tirets, espaces, minuscules et confusions O/0, I/1, L/1 ; l'affichage est
+    groupé (`ABCD-EFGH-JKMN-PQRS`). Les codes à 8 caractères déjà émis restent
+    acceptés, pour ne pas priver leurs titulaires du suivi de leur dossier.
+16. **Email non normalisé à l'inscription candidat.** `Jean@X.com` et
+    `jean@x.com` créaient deux comptes distincts et contournaient le contrôle
+    « un compte existe déjà ». → normalisation (trim + minuscules) dans le schéma
+    et dans `authorize()`, alignée sur `tuteurs/schema.ts`.
 
 ### Fonctionnel
 
@@ -101,9 +134,22 @@ la suite.
 - **Chiffrement au repos des documents.** Le CDC place la sécurité RGPD au niveau
   « mots de passe hashés + accès authentifié », ce qui est respecté. Le
   chiffrement applicatif des PDF n'est pas demandé.
-- **CRUD des offres côté back-office.** Le CDC ne demande que la *consultation*
-  côté candidat ; les offres sont créées par le seed ou en base.
+- **Limitation de débit (rate limiting).** Aucune sur `/admin/login`,
+  `/candidat/login`, `/suivi` ni `/candidature`. Le CDC ne l'exige pas. Le renvoi
+  d'email de vérification a son propre palier applicatif (2 min), mais une vraie
+  protection contre le bourrinage demande une couche dédiée (Vercel WAF, Upstash
+  Redis…).
 - **Tests automatisés.** Aucun harnais de test dans le projet ; le CDC ne
-  l'impose pas mais c'est le premier chantier qualité à ouvrir.
+  l'impose pas mais c'est le premier chantier qualité à ouvrir. Les correctifs
+  14 et 15 ont été validés par des scripts jetables (entropie, uniformité du
+  tirage, normalisation, jeton URL-safe) qu'il faudrait pérenniser en tests.
+- **`shared/storage/supabase.ts` sans `import "server-only"`**, contrairement à
+  `guards.ts`, `purge.ts` et `mailer.ts`. Next.js n'expose pas les variables non
+  préfixées `NEXT_PUBLIC_` au client, donc la clé `SERVICE_ROLE` ne fuiterait
+  pas — l'import échouerait à l'exécution. À aligner pour échouer tôt.
+- **« Plan de localisation » hors CDC.** `REQUIRED_DOCUMENTS` impose ce document
+  en plus de l'Annexe A (5 pièces en académique au lieu de 4, 6 au lieu de 5 en
+  professionnel), et `validateDocumentSet` l'exige. Cohérent avec l'extension
+  domicile/GPS de la Phase 2, mais à valider avec le donneur d'ordre.
 - **Purge des comptes candidats orphelins.** La purge RGPD efface le profil et
   les documents, mais pas le compte `User` de rôle `CANDIDATE` associé.

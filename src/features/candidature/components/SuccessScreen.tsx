@@ -12,6 +12,7 @@ import {
   Info,
 } from "lucide-react";
 import { useToast } from "@/shared/ui/ToastProvider";
+import { formatTrackingCode } from "@/shared/tracking/tracking-code";
 
 interface SuccessScreenProps {
   trackingCode: string;
@@ -31,7 +32,8 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(trackingCode);
+      // On copie la forme affichée : `/suivi` retire les tirets à la saisie.
+      await navigator.clipboard.writeText(formatTrackingCode(trackingCode));
       setCopied(true);
       showToast({ type: "success", message: "Code de suivi copié." });
       window.setTimeout(() => setCopied(false), 2000);
@@ -64,8 +66,8 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
             Votre code de suivi
           </p>
           <div className="flex items-center justify-between gap-3">
-            <code className="text-2xl font-mono font-bold tracking-widest text-primary">
-              {trackingCode}
+            <code className="text-lg sm:text-xl font-mono font-bold tracking-wider text-primary break-all text-left">
+              {formatTrackingCode(trackingCode)}
             </code>
             <button
               onClick={copyToClipboard}

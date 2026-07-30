@@ -74,6 +74,9 @@ export async function createTutor(
         name: parsed.data.name,
         password: hashedPassword,
         role: "TUTOR",
+        // Compte provisionné par la RH : l'adresse est vérifiée d'office, la
+        // confirmation par email ne concerne que l'auto-inscription candidat.
+        emailVerifiedAt: new Date(),
       },
       select: { id: true },
     });

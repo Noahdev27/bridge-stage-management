@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import { useActionState, useEffect } from "react";
 import { checkTrackingStatus, SuiviActionState } from "@/features/suivi/actions";
 import { StatusBadge } from "@/shared/ui/StatusBadge";
+import { formatTrackingCode } from "@/shared/tracking/tracking-code";
 import { SuiviResultSkeleton } from "@/shared/ui/SuiviResultSkeleton";
 import { useToast } from "@/shared/ui/ToastProvider";
 import Link from "next/link";
@@ -99,8 +100,9 @@ export default function SuiviPage() {
             Suivre ma candidature
           </h1>
           <p className="text-sm text-base-content/60 mt-2">
-            Entrez le code à 8 caractères reçu lors de la soumission de votre
-            dossier chez Bridge Technologies Solutions.
+            Entrez le code reçu lors de la soumission de votre dossier chez
+            Bridge Technologies Solutions. Les tirets et la casse n&apos;ont pas
+            d&apos;importance.
           </p>
         </div>
 
@@ -116,10 +118,11 @@ export default function SuiviPage() {
                   <input
                     type="text"
                     name="trackingCode"
-                    placeholder="Ex : A7B2K9M1"
-                    maxLength={8}
+                    placeholder="Ex : K3QP-7WZM-2BRS-9XTH"
+                    // 16 caractères + 3 tirets si le code est collé formaté.
+                    maxLength={19}
                     disabled={isPending}
-                    className="input input-bordered join-item w-full uppercase font-mono tracking-widest text-center focus:outline-primary"
+                    className="input input-bordered join-item w-full uppercase font-mono tracking-wider text-center focus:outline-primary"
                     required
                   />
                   <button
@@ -149,7 +152,7 @@ export default function SuiviPage() {
                   </h2>
                   <p className="flex items-center gap-1.5 text-xs text-base-content/50 font-mono mt-0.5">
                     <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
-                    {c.trackingCode}
+                    {formatTrackingCode(c.trackingCode)}
                   </p>
                 </div>
                 <StatusBadge status={c.status} />

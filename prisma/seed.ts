@@ -6,20 +6,31 @@ const prisma = new PrismaClient();
 async function main() {
   const password = await bcrypt.hash("password123", 10);
 
+  // Comptes du back-office : vérifiés d'office (la confirmation par email ne
+  // concerne que l'auto-inscription des candidats).
+  const emailVerifiedAt = new Date();
+
   await prisma.user.upsert({
     where: { email: "rh@bridge.test" },
-    update: {},
-    create: { email: "rh@bridge.test", password, name: "RH Démo", role: "ADMIN" },
+    update: { emailVerifiedAt },
+    create: {
+      email: "rh@bridge.test",
+      password,
+      name: "RH Démo",
+      role: "ADMIN",
+      emailVerifiedAt,
+    },
   });
 
   await prisma.user.upsert({
     where: { email: "tuteur@bridge.test" },
-    update: { role: "TUTOR" },
+    update: { role: "TUTOR", emailVerifiedAt },
     create: {
       email: "tuteur@bridge.test",
       password,
       name: "Tuteur Démo",
       role: "TUTOR",
+      emailVerifiedAt,
     },
   });
 

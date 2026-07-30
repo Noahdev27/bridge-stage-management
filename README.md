@@ -79,8 +79,14 @@ Détails et conventions : voir [`GUIDE_STAGIAIRE.md`](./docs/GUIDE_STAGIAIRE.md)
 |---|---|
 | `ADMIN` / `RH` | Back-office complet : statuts, tuteurs, évaluations, purge RGPD |
 | `TUTOR` | Ses dossiers affectés uniquement, en lecture seule |
-| `CANDIDATE` | `/espace-candidat` : ses propres demandes |
+| `CANDIDATE` | `/espace-candidat` : ses propres demandes, **après confirmation de son adresse email** |
 | *(anonyme)* | Candidature, offres, suivi par code |
+
+Un compte candidat s'auto-inscrit : son adresse doit donc être confirmée (lien
+valable 24 h) avant toute connexion, sans quoi n'importe qui pourrait s'inscrire
+avec l'email d'un candidat et lire son dossier. Les comptes du back-office sont
+provisionnés par un administrateur et vérifiés d'office. Le renvoi du lien se
+fait depuis `/candidat/login`.
 
 > ⚠️ Le middleware ne protège que la navigation. Une Server Action est
 > dispatchée par identifiant et peut être appelée depuis n'importe quelle route :

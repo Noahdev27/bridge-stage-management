@@ -44,6 +44,18 @@ model User {
   role      Role     @default(RH)
   createdAt DateTime @default(now())
 
+  /// Date de validation de l'adresse email. Un compte CANDIDATE non vérifié ne
+  /// peut ni se connecter ni consulter de dossier : sans cette preuve, n'importe
+  /// qui pourrait s'inscrire avec l'email d'un candidat et lire son dossier.
+  /// Les comptes du back-office sont provisionnés par un administrateur, donc
+  /// vérifiés d'office.
+  emailVerifiedAt DateTime?
+
+  /// SHA-256 du jeton de vérification (jamais le jeton en clair : une fuite de
+  /// la base ne doit pas permettre de valider un compte).
+  verificationTokenHash      String?   @unique
+  verificationTokenExpiresAt DateTime?
+
   evaluations     RequestEvaluation[]
   tutoredRequests InternshipRequest[] @relation("TutorAssignments")
 }

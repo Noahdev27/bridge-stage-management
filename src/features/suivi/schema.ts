@@ -1,20 +1,32 @@
 import { z } from "zod";
+import {
+  LEGACY_TRACKING_CODE_LENGTH,
+  TRACKING_CODE_LENGTH,
+  normalizeTrackingCode,
+} from "@/shared/tracking/tracking-code";
 
 /**
  * Schéma de validation pour la saisie du code de suivi candidat.
- * - Supprime les espaces superflus (trim)
- * - Force le passage en majuscules (toUpperCase)
- * - Vérifie que la longueur est exactement de 8 caractères
- * - S'assure que le format est purement alphanumérique
+ *
+ * La saisie est d'abord ramenée à sa forme canonique (majuscules, séparateurs
+ * retirés, caractères ambigus corrigés), ce qui rend le champ tolérant au
+ * copier-coller du code formaté envoyé par email (`ABCD-EFGH-JKMN-PQRS`).
+ *
+ * La longueur acceptée couvre l'ancien format (8 caractères) et le format
+ * courant (16) : les dossiers déposés avant le renforcement de l'entropie
+ * doivent rester consultables par leurs candidats.
  */
 export const trackingCodeSchema = z.object({
   trackingCode: z
     .string()
-    .trim()
-    .toUpperCase()
-    .min(1, "Le code de suivi est obligatoire.")
-    .length(8, "Le code de suivi doit comporter exactement 8 caractères.")
-    .regex(/^[A-Z0-9]+$/, "Le code de suivi ne doit contenir que des lettres et des chiffres."),
+    .transform(normalizeTrackingCode)
+    .refine((code) => code.length > 0, "Le code de suivi est obligatoire.")
+    .refine(
+      (code) =>
+        code.length === TRACKING_CODE_LENGTH ||
+        code.length === LEGACY_TRACKING_CODE_LENGTH,
+      `Le code de suivi doit comporter ${TRACKING_CODE_LENGTH} caractères (ou ${LEGACY_TRACKING_CODE_LENGTH} pour les dossiers les plus anciens).`
+    ),
 });
 
 export type TrackingCodeInput = z.infer<typeof trackingCodeSchema>;

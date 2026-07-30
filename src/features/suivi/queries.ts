@@ -1,13 +1,14 @@
 import { prisma } from "../../shared/db/prisma"; // Alignement sur ton instance Prisma réelle
+import { normalizeTrackingCode } from "@/shared/tracking/tracking-code";
 
 /**
  * Récupère une demande de stage unique et ses informations clés via son code de suivi.
- * @param trackingCode Le code unique à 8 caractères fourni au candidat.
+ * @param trackingCode Le code fourni au candidat, sous une forme quelconque.
  */
 export async function getCandidatureByTrackingCode(trackingCode: string) {
   try {
-    // On force la recherche en majuscules pour correspondre au format stocké
-    const cleanCode = trackingCode.trim().toUpperCase();
+    // Forme canonique : le code est stocké sans séparateur ni minuscule.
+    const cleanCode = normalizeTrackingCode(trackingCode);
 
     const candidature = await prisma.internshipRequest.findUnique({
       where: {

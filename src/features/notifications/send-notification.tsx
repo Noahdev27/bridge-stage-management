@@ -7,6 +7,7 @@ import { STATUS_LABELS, TYPE_LABELS } from "@/shared/constants/domain";
 import SubmissionConfirmationEmail from "@/features/notifications/templates/SubmissionConfirmationEmail";
 import StatusChangedEmail from "@/features/notifications/templates/StatusChangedEmail";
 import TutorAssignedEmail from "@/features/notifications/templates/TutorAssignedEmail";
+import EmailVerificationEmail from "@/features/notifications/templates/EmailVerificationEmail";
 
 /**
  * Envoi des emails transactionnels.
@@ -53,6 +54,28 @@ export const notifyStatusChange = async (
   await safeSend({
     to: email,
     subject: `Statut de votre candidature : ${STATUS_LABELS[status]}`,
+    html,
+  });
+};
+
+export const notifyEmailVerification = async ({
+  to,
+  candidateName,
+  verificationUrl,
+}: {
+  to: string;
+  candidateName: string | null;
+  verificationUrl: string;
+}) => {
+  const html = await render(
+    <EmailVerificationEmail
+      candidateName={candidateName || "Candidat"}
+      verificationUrl={verificationUrl}
+    />
+  );
+  await safeSend({
+    to,
+    subject: "Confirmez votre adresse email - Bridge",
     html,
   });
 };

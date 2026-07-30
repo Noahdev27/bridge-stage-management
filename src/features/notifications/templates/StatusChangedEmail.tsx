@@ -1,5 +1,6 @@
 import { Html, Body, Container, Heading, Text, Section, Hr } from '@react-email/components';
 import * as React from 'react';
+import { formatTrackingCode } from '@/shared/tracking/tracking-code';
 
 const colors = {
   primary: '#0088C1',
@@ -41,7 +42,7 @@ export default function StatusChangedEmail({
           </Section>
 
           <Text style={{ fontSize: '14px', marginTop: '20px' }}>
-            Code de suivi : <strong>{trackingCode}</strong>
+            Code de suivi : <strong>{formatTrackingCode(trackingCode)}</strong>
           </Text>
 
           <Hr style={{ margin: '20px 0', border: `1px solid ${colors.background}` }} />

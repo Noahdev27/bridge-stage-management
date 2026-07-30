@@ -29,6 +29,9 @@ async function main() {
       password: hashedPassword,
       name: "Administrateur",
       role: "ADMIN",
+      // Compte provisionné : la confirmation par email ne concerne que
+      // l'auto-inscription des candidats.
+      emailVerifiedAt: new Date(),
     },
   });
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CandidateLoginForm } from "@/features/compte-candidat/components/CandidateLoginForm";
+import { ResendVerificationForm } from "@/features/compte-candidat/components/ResendVerificationForm";
 import { ArrowLeft } from "lucide-react";
 
 export default function CandidateLoginPage() {
@@ -11,6 +12,7 @@ export default function CandidateLoginPage() {
           Accueil
         </Link>
         <CandidateLoginForm />
+        <ResendVerificationForm />
       </div>
     </main>
   );
