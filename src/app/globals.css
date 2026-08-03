@@ -56,6 +56,17 @@ body {
   font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* DaisyUI 5 pose `white-space: nowrap` sur `.label`. Les textes d'aide et les
+   messages de validation qu'il contient se rendent alors sur une seule ligne :
+   comme `nowrap` rend la largeur min-content égale à la largeur du texte
+   entier, l'élément ne peut plus se réduire et déborde horizontalement de la
+   page — à toutes les largeurs d'écran, desktop compris. Les libellés courts,
+   eux, tiennent déjà sur une ligne : les laisser se replier ne change rien. */
+.label-text,
+.label-text-alt {
+  white-space: normal;
+}
+
 @keyframes toast-enter {
   from {
     opacity: 0;

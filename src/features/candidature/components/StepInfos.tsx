@@ -259,13 +259,13 @@ export function StepInfos({ data, onChange, errors = {} }: StepInfosProps) {
         </div>
       </div>
 
-      <label className="label -mt-2">
-        <span className="label-text-alt text-base-content/50">
-          Utilisez le bouton ci-dessus pour renseigner automatiquement vos
-          coordonnées, ou saisissez-les manuellement (ex. depuis Google Maps).
-          Le plan de localisation reste requis à l&apos;étape « Documents ».
-        </span>
-      </label>
+      {/* Texte d'aide, et non un libellé : un <label> sans contrôle associé
+          n'apporte rien aux lecteurs d'écran. */}
+      <p className="-mt-2 text-xs text-base-content/50">
+        Utilisez le bouton ci-dessus pour renseigner automatiquement vos
+        coordonnées, ou saisissez-les manuellement (ex. depuis Google Maps). Le
+        plan de localisation reste requis à l&apos;étape « Documents ».
+      </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Téléphone proche 1 */}

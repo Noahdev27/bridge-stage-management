@@ -42,6 +42,66 @@ npm run dev
 
 App sur http://localhost:3000
 
+## Configuration email (SMTP)
+
+Les emails transactionnels (code de suivi, changement de statut, affectation
+tuteur, confirmation d'adresse) partent par SMTP via `shared/mail/mailer.ts`.
+Aucun code n'est à modifier : il suffit de renseigner six variables.
+
+> ⚠️ Tant que le SMTP n'est pas configuré, **aucun candidat ne peut activer son
+> compte** : la connexion exige une adresse confirmée, et le lien de
+> confirmation n'arrive que par email. Les échecs d'envoi sont volontairement
+> non bloquants (`safeSend`) — ils n'apparaissent que dans les logs serveur,
+> jamais à l'écran.
+
+| Variable | Rôle |
+|---|---|
+| `SMTP_HOST` | Serveur d'envoi |
+| `SMTP_PORT` | `587` (STARTTLS) ou `465` (TLS direct) |
+| `SMTP_SECURE` | `false` pour le port 587, `true` pour le 465 |
+| `SMTP_USER` | Identifiant du compte d'envoi |
+| `SMTP_PASS` | Mot de passe d'application ou clé API |
+| `SMTP_FROM` | Adresse expéditrice — **doit correspondre à `SMTP_USER`** |
+
+Si `SMTP_FROM` diffère du compte authentifié, le serveur accepte
+l'authentification puis refuse l'envoi.
+
+### Où obtenir les valeurs
+
+| Fournisseur | Où récupérer `SMTP_PASS` | Limite |
+|---|---|---|
+| **Gmail** | Compte Google → Sécurité → Mots de passe des applications (exige la validation en 2 étapes) | ~500 mails/jour |
+| **Office 365** | Le mot de passe de la boîte, ou une clé d'application si MFA | L'admin doit activer *SMTP authentifié* sur la boîte (Centre d'administration M365 → Utilisateurs → la boîte → Courrier → Gérer les applications de messagerie) |
+| **Resend** | Dashboard → API Keys (`SMTP_USER` vaut littéralement `resend`) | Nécessite un domaine vérifié pour écrire à des tiers |
+
+Exemple Gmail, le plus rapide à mettre en place :
+
+```dotenv
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT="587"
+SMTP_SECURE="false"
+SMTP_USER="expediteur@gmail.com"
+SMTP_PASS="mot-de-passe-application-16-lettres"
+SMTP_FROM="expediteur@gmail.com"
+```
+
+### En production (Vercel)
+
+Recréer les six variables dans *Settings → Environment Variables* (scope
+Production), puis **redéployer** : les variables ne sont pas rechargées sur un
+déploiement déjà construit.
+
+> ⚠️ Vérifier aussi `AUTH_URL`. `compte-candidat/verification.ts` construit le
+> lien de confirmation à partir de cette variable : si la valeur locale
+> `http://localhost:3000` a été recopiée sur Vercel, les emails partent mais
+> **tous les liens pointent vers localhost**. En production elle doit valoir
+> l'URL réelle du déploiement.
+
+### Vérifier
+
+S'inscrire sur `/candidat/inscription` avec sa propre adresse : recevoir le lien
+et pouvoir l'ouvrir valide d'un coup le SMTP, le rendu du template et `AUTH_URL`.
+
 ## Scripts
 
 | Commande | Rôle |
