@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useActionState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { InternshipType } from "@prisma/client";
 import {
   UserRound,
@@ -11,7 +12,7 @@ import {
   ArrowRight,
   Send,
 } from "lucide-react";
-import { submitCandidature, type ActionState } from "../actions";
+import { submitCandidature } from "../actions";
 import { step1InfosSchema, step2ParcoursSchema } from "../schema";
 import type { Step1InfosInput, Step2ParcoursInput } from "../schema";
 import { StepInfos } from "./StepInfos";
@@ -20,6 +21,7 @@ import { StepDocuments } from "./StepDocuments";
 import { StepValidation } from "./StepValidation";
 import { SuccessScreen } from "./SuccessScreen";
 import { CandidatureFormSkeleton } from "./CandidatureFormSkeleton";
+import { writeConfirmationHandoff } from "../confirmation-handoff";
 import { useToast } from "@/shared/ui/ToastProvider";
 import { REQUIRED_DOCUMENTS } from "@/shared/constants/domain";
 
@@ -43,18 +45,30 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
   // Ref du formulaire pour avoir accès au FormData
   const formRef = useRef<HTMLFormElement>(null);
 
-  // État de la Server Action
-  const [actionState, formAction, isPending] = useActionState<
-    ActionState,
-    FormData
-  >(submitCandidature, {});
   const { showToast } = useToast();
+  const router = useRouter();
 
+  /**
+   * La Server Action est appelée directement plutôt que via `useActionState` :
+   * on dispose ainsi du code de suivi dans le gestionnaire d'événement, ce qui
+   * permet d'enchaîner écriture du relais et redirection sans passer par un
+   * effet réagissant à l'état de retour.
+   */
+  const [isPending, startTransition] = useTransition();
+  // "sent" survit à l'attente de la redirection : le formulaire ne doit pas
+  // réapparaître entre la fin de l'action et l'arrivée sur la confirmation.
+  const [phase, setPhase] = useState<"idle" | "sent">("idle");
+  // Repli si sessionStorage est indisponible : la confirmation reste affichée
+  // ici plutôt que d'envoyer le candidat sur une page privée de son code.
+  const [inlineTrackingCode, setInlineTrackingCode] = useState<string | null>(
+    null
+  );
+
+  // La page de confirmation est préchargée pendant que le candidat remplit le
+  // formulaire : à l'envoi, la transition est immédiate.
   useEffect(() => {
-    if (actionState.error && !isPending) {
-      showToast({ type: "error", message: actionState.error });
-    }
-  }, [actionState.error, isPending, showToast]);
+    router.prefetch("/candidature/confirmation");
+  }, [router]);
 
   // Gestion du changement de champ (étape 1)
   const handleStep1Change = (field: keyof Step1InfosInput, value: string) => {
@@ -167,10 +181,13 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
   };
 
   // Gestion de la soumission du formulaire (étape 4)
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!formRef.current) return;
+    // Chaque envoi crée un dossier distinct côté serveur, et l'attente des
+    // uploads incite à recliquer : on verrouille jusqu'au retour de l'action.
+    if (isPending || phase === "sent") return;
 
     // Créer un FormData avec les données de toutes les étapes
     const formData = new FormData(formRef.current);
@@ -198,20 +215,50 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
       formData.set("offerId", offerId);
     }
 
-    await formAction(formData);
+    startTransition(async () => {
+      const result = await submitCandidature({}, formData);
+
+      if (result.error || !result.trackingCode) {
+        // L'échec rouvre le bouton : le candidat doit pouvoir réessayer.
+        showToast({
+          type: "error",
+          message: result.error ?? "Erreur serveur. Veuillez réessayer.",
+        });
+        return;
+      }
+
+      setPhase("sent");
+
+      const stored = writeConfirmationHandoff({
+        trackingCode: result.trackingCode,
+        email: step1Data.email,
+      });
+
+      if (!stored) {
+        setInlineTrackingCode(result.trackingCode);
+        return;
+      }
+
+      // On quitte /candidature pour une page dédiée : un F5 ou un retour
+      // arrière ne retombe alors jamais sur le formulaire encore rempli.
+      router.replace("/candidature/confirmation");
+    });
   };
 
-  // Si succès, afficher l'écran de confirmation
-  if (actionState.success && actionState.trackingCode) {
+  // sessionStorage indisponible : la confirmation reste affichée sur place,
+  // le code de suivi ne doit jamais être perdu.
+  if (inlineTrackingCode) {
     return (
       <SuccessScreen
-        trackingCode={actionState.trackingCode}
+        trackingCode={inlineTrackingCode}
         email={step1Data.email}
       />
     );
   }
 
-  if (isPending) {
+  // On garde le squelette jusqu'à ce que la redirection ait effectivement lieu :
+  // sans cela, le formulaire réapparaîtrait brièvement après un envoi réussi.
+  if (isPending || phase === "sent") {
     return <CandidatureFormSkeleton />;
   }
 
