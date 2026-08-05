@@ -59,10 +59,8 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
   // réapparaître entre la fin de l'action et l'arrivée sur la confirmation.
   const [phase, setPhase] = useState<"idle" | "sent">("idle");
   // Repli si sessionStorage est indisponible : la confirmation reste affichée
-  // ici plutôt que d'envoyer le candidat sur une page privée de son code.
-  const [inlineTrackingCode, setInlineTrackingCode] = useState<string | null>(
-    null
-  );
+  // ici plutôt que de rebondir sur une page qui renverrait au formulaire.
+  const [showInlineConfirmation, setShowInlineConfirmation] = useState(false);
 
   // La page de confirmation est préchargée pendant que le candidat remplit le
   // formulaire : à l'envoi, la transition est immédiate.
@@ -218,7 +216,9 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
     startTransition(async () => {
       const result = await submitCandidature({}, formData);
 
-      if (result.error || !result.trackingCode) {
+      // Le code de suivi renvoyé par l'action n'est plus lu ici : il ne part
+      // que par email. On ne teste donc que l'issue de l'envoi.
+      if (result.error || !result.success) {
         // L'échec rouvre le bouton : le candidat doit pouvoir réessayer.
         showToast({
           type: "error",
@@ -230,12 +230,12 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
       setPhase("sent");
 
       const stored = writeConfirmationHandoff({
-        trackingCode: result.trackingCode,
+        submitted: true,
         email: step1Data.email,
       });
 
       if (!stored) {
-        setInlineTrackingCode(result.trackingCode);
+        setShowInlineConfirmation(true);
         return;
       }
 
@@ -245,15 +245,9 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
     });
   };
 
-  // sessionStorage indisponible : la confirmation reste affichée sur place,
-  // le code de suivi ne doit jamais être perdu.
-  if (inlineTrackingCode) {
-    return (
-      <SuccessScreen
-        trackingCode={inlineTrackingCode}
-        email={step1Data.email}
-      />
-    );
+  // sessionStorage indisponible : la confirmation reste affichée sur place.
+  if (showInlineConfirmation) {
+    return <SuccessScreen email={step1Data.email} />;
   }
 
   // On garde le squelette jusqu'à ce que la redirection ait effectivement lieu :

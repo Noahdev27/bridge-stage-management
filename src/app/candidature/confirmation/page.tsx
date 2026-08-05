@@ -63,7 +63,5 @@ export default function CandidatureConfirmationPage() {
     );
   }
 
-  return (
-    <SuccessScreen trackingCode={handoff.trackingCode} email={handoff.email} />
-  );
+  return <SuccessScreen email={handoff.email} />;
 }

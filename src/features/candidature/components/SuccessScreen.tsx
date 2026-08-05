@@ -1,26 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
-import {
-  CheckCircle2,
-  Copy,
-  Check,
-  MailCheck,
-  Search,
-  Home,
-  Info,
-} from "lucide-react";
+import { CheckCircle2, MailCheck, Search, Home, Info } from "lucide-react";
 import { useToast } from "@/shared/ui/ToastProvider";
-import { formatTrackingCode } from "@/shared/tracking/tracking-code";
 
 interface SuccessScreenProps {
-  trackingCode: string;
   email?: string;
 }
 
-export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
-  const [copied, setCopied] = useState(false);
+/**
+ * Le code de suivi n'est volontairement pas affiché ici : il n'est communiqué
+ * que par l'email de confirmation. Un code visible à l'écran se retrouve sur la
+ * capture d'écran d'un poste partagé ou sous les yeux du voisin de salle
+ * informatique, alors qu'il donne à lui seul accès au dossier via `/suivi`.
+ * L'email fait aussi office de conservation : le candidat le retrouve des
+ * semaines plus tard, contrairement à un onglet fermé.
+ */
+export function SuccessScreen({ email }: SuccessScreenProps) {
   const { showToast } = useToast();
   const hasAnnouncedSuccess = useRef(false);
 
@@ -30,23 +27,8 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
     showToast({ type: "success", message: "Candidature envoyée avec succès !" });
   }, [showToast]);
 
-  const copyToClipboard = async () => {
-    try {
-      // On copie la forme affichée : `/suivi` retire les tirets à la saisie.
-      await navigator.clipboard.writeText(formatTrackingCode(trackingCode));
-      setCopied(true);
-      showToast({ type: "success", message: "Code de suivi copié." });
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      showToast({
-        type: "error",
-        message: "Impossible de copier le code de suivi.",
-      });
-    }
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="max-w-md w-full text-center">
         <div className="mb-6">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-success/15 text-success">
@@ -54,50 +36,34 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
           </div>
         </div>
 
-        <h1 className="text-3xl font-bold text-secondary mb-3">
+        <h1 className="text-3xl font-bold text-secondary mb-3 text-balance">
           Candidature envoyée !
         </h1>
         <p className="text-base-content/60 mb-6">
-          Merci pour votre candidature. Notre équipe RH va l&apos;examiner rapidement.
+          Merci pour votre candidature. Notre équipe RH va l&apos;examiner
+          rapidement.
         </p>
 
-        <div className="rounded-box border border-base-300 bg-base-100 p-6 mb-6">
-          <p className="text-xs font-semibold uppercase tracking-wider text-base-content/50 mb-3">
-            Votre code de suivi
+        <div className="rounded-box border border-primary/30 bg-primary/5 p-6 mb-6 text-left">
+          <p className="flex items-center gap-2 font-semibold text-secondary mb-2">
+            <MailCheck className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
+            Consultez votre boîte mail
           </p>
-          <div className="flex items-center justify-between gap-3">
-            <code className="text-lg sm:text-xl font-mono font-bold tracking-wider text-primary break-all text-left">
-              {formatTrackingCode(trackingCode)}
-            </code>
-            <button
-              onClick={copyToClipboard}
-              className="btn btn-sm btn-ghost gap-1.5"
-              aria-label="Copier le code de suivi"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4 text-success" aria-hidden="true" />
-                  Copié
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" aria-hidden="true" />
-                  Copier
-                </>
-              )}
-            </button>
-          </div>
+          <p className="text-sm text-base-content/70">
+            Votre <strong>code de suivi</strong> vient d&apos;être envoyé à{" "}
+            {email ? (
+              <strong className="break-all">{email}</strong>
+            ) : (
+              "l'adresse indiquée dans votre dossier"
+            )}
+            . C&apos;est lui qui vous permettra de consulter l&apos;état de votre
+            candidature.
+          </p>
+          <p className="text-xs text-base-content/50 mt-3">
+            L&apos;email peut mettre quelques minutes à arriver. Pensez à
+            vérifier vos courriers indésirables.
+          </p>
         </div>
-
-        {email && (
-          <div className="alert alert-info mb-6">
-            <MailCheck className="w-5 h-5 shrink-0" aria-hidden="true" />
-            <span className="text-left">
-              Un email contenant votre code de suivi a été envoyé à{" "}
-              <strong>{email}</strong>
-            </span>
-          </div>
-        )}
 
         <div className="flex flex-col gap-3">
           <Link href="/suivi" className="btn btn-primary gap-2">
@@ -116,8 +82,11 @@ export function SuccessScreen({ trackingCode, email }: SuccessScreenProps) {
             À retenir
           </p>
           <ul className="text-xs text-base-content/60 space-y-1 list-disc list-inside">
-            <li>Votre code de suivi est unique et non transférable.</li>
-            <li>Conservez-le pour consulter l&apos;état de votre dossier.</li>
+            <li>
+              Conservez l&apos;email : il contient le seul exemplaire de votre
+              code de suivi.
+            </li>
+            <li>Ce code est unique et non transférable.</li>
             <li>Notre équipe reviendra vers vous sous 5 à 10 jours ouvrables.</li>
           </ul>
         </div>

@@ -20,7 +20,8 @@ multi-étapes et d'obtenir un code de suivi.
 - [x] La liste des documents s'adapte au type de stage (`shared/constants/domain.ts`)
 - [x] Dossier complet exigé avant de passer au récapitulatif (Annexe A), revérifié côté serveur
 - [x] Création en base (statut `PENDING`) + upload Supabase (`shared/storage/supabase.ts`)
-- [x] Code de suivi non devinable, affiché à l'écran ET envoyé par email (Slice 4)
+- [x] Code de suivi non devinable, transmis **uniquement par email** (Slice 4) —
+      l'écran de confirmation invite à consulter sa boîte mail, il ne l'affiche pas
 - [x] Toast de confirmation + skeleton de chargement
 - [x] Utilisable sur mobile
 

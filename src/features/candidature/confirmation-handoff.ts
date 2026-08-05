@@ -1,20 +1,25 @@
 /**
- * Passage du code de suivi entre `/candidature` et `/candidature/confirmation`.
+ * Passage entre `/candidature` et `/candidature/confirmation`.
  *
- * Le code de suivi vaut 80 bits d'entropie et donne accès au dossier via
- * `/suivi` : le faire transiter par la query string l'inscrirait dans
- * l'historique du navigateur, les logs serveur et l'en-tête Referer. On passe
- * donc par `sessionStorage`, cantonné à l'onglet et à l'origine, et effacé à sa
- * fermeture.
+ * Le code de suivi ne transite plus par le navigateur : il n'est communiqué que
+ * par l'email de confirmation. Cette charge utile ne sert donc plus qu'à deux
+ * choses — attester qu'un envoi vient d'avoir lieu (sans quoi la page de
+ * confirmation renvoie au formulaire), et rappeler l'adresse destinataire.
+ *
+ * `sessionStorage` plutôt que la query string : l'adresse email n'a pas à
+ * s'inscrire dans l'historique du navigateur, les logs serveur ni l'en-tête
+ * Referer. Le stockage est cantonné à l'onglet et effacé à sa fermeture.
  *
  * L'entrée n'est volontairement pas supprimée à la lecture : rafraîchir la page
- * de confirmation doit continuer d'afficher le code.
+ * de confirmation doit continuer d'afficher le message.
  */
 
 export const CONFIRMATION_STORAGE_KEY = "bridge:candidature-confirmation";
 
 export type ConfirmationHandoff = {
-  trackingCode: string;
+  /** Marqueur explicite : une charge utile vide resterait un objet valide. */
+  submitted: true;
+  /** Adresse à laquelle le code de suivi a été envoyé. */
   email?: string;
 };
 
@@ -47,15 +52,14 @@ export function parseConfirmationHandoff(raw: string): ConfirmationHandoff | nul
     if (
       typeof parsed !== "object" ||
       parsed === null ||
-      typeof (parsed as ConfirmationHandoff).trackingCode !== "string" ||
-      !(parsed as ConfirmationHandoff).trackingCode
+      (parsed as ConfirmationHandoff).submitted !== true
     ) {
       return null;
     }
 
-    const { trackingCode, email } = parsed as ConfirmationHandoff;
+    const { email } = parsed as ConfirmationHandoff;
     return {
-      trackingCode,
+      submitted: true,
       email: typeof email === "string" ? email : undefined,
     };
   } catch {
