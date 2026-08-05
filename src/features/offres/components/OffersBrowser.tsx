@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DEPARTMENT_LABELS, TYPE_LABELS } from "@/shared/constants/domain";
 import type { Department, InternshipOffer, InternshipType } from "@prisma/client";
@@ -12,12 +13,16 @@ export function OffersBrowser({ offers }: { offers: InternshipOffer[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const current = searchParams.get("department") || "";
+  // Le filtrage repasse par le serveur : sans indicateur, le select semble figé.
+  const [isFiltering, startTransition] = useTransition();
 
   const handleDepartment = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (!value) params.delete("department");
     else params.set("department", value);
-    router.push(`/offres?${params.toString()}`);
+    startTransition(() => {
+      router.push(`/offres?${params.toString()}`);
+    });
   };
 
   return (
@@ -25,6 +30,12 @@ export function OffersBrowser({ offers }: { offers: InternshipOffer[] }) {
       <label className="form-control max-w-sm">
         <span className="label py-1">
           <span className="label-text font-semibold">Département</span>
+          {isFiltering && (
+            <span className="label-text-alt inline-flex items-center gap-1.5 text-base-content/60">
+              <span className="loading loading-spinner loading-xs" />
+              Filtrage…
+            </span>
+          )}
         </span>
         <select
           className="select select-bordered"

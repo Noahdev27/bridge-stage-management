@@ -1,17 +1,32 @@
+import { Suspense } from "react";
 import { CandidatureForm } from "@/features/candidature/components/CandidatureForm";
+import { CandidatureFormSkeleton } from "@/features/candidature/components/CandidatureFormSkeleton";
 
 export const metadata = {
   title: "Candidature - Bridge Stage Management",
   description: "Postulez pour un stage académique ou professionnel",
 };
 
-export default async function CandidaturePage({
+/**
+ * Lecture de `?offerId` isolée dans son propre composant : tout ce qui dépend
+ * de `searchParams` rend la page dynamique. En le cantonnant sous Suspense, le
+ * reste de la page est prérendu statiquement, donc préchargeable par <Link> —
+ * le clic sur « Déposer ma candidature » affiche la page sans aller-retour.
+ */
+async function CandidatureFormLoader({
   searchParams,
 }: {
   searchParams: Promise<{ offerId?: string }>;
 }) {
   const { offerId } = await searchParams;
+  return <CandidatureForm offerId={offerId} />;
+}
 
+export default function CandidaturePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ offerId?: string }>;
+}) {
   return (
     <main className="min-h-screen bg-base-100 py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -24,7 +39,9 @@ export default async function CandidaturePage({
           </p>
         </div>
 
-        <CandidatureForm offerId={offerId} />
+        <Suspense fallback={<CandidatureFormSkeleton />}>
+          <CandidatureFormLoader searchParams={searchParams} />
+        </Suspense>
       </div>
     </main>
   );

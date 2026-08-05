@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getPublishedOffers } from "@/features/offres/queries";
 import { OffersBrowser } from "@/features/offres/components/OffersBrowser";
+import { OffersBrowserSkeleton } from "@/features/offres/components/OffersBrowserSkeleton";
 import type { Department } from "@prisma/client";
 import { DEPARTMENT_LABELS } from "@/shared/constants/domain";
 
@@ -10,12 +11,20 @@ interface OffresPageProps {
   searchParams: Promise<{ department?: string }>;
 }
 
-export default async function OffresPage({ searchParams }: OffresPageProps) {
+/**
+ * `searchParams` + requête base isolés ici : la coque de la page reste
+ * prérendue et préchargeable par <Link>, seule la liste attend la base.
+ */
+async function OffersList({ searchParams }: OffresPageProps) {
   const { department: raw } = await searchParams;
   const department =
     raw && raw in DEPARTMENT_LABELS ? (raw as Department) : undefined;
   const offers = await getPublishedOffers(department);
 
+  return <OffersBrowser offers={offers} />;
+}
+
+export default function OffresPage({ searchParams }: OffresPageProps) {
   return (
     <main className="min-h-screen bg-base-200">
       <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
@@ -34,8 +43,8 @@ export default async function OffresPage({ searchParams }: OffresPageProps) {
             Consultez les besoins ouverts par département chez Bridge.
           </p>
         </div>
-        <Suspense fallback={<div className="skeleton h-40 w-full rounded-box" />}>
-          <OffersBrowser offers={offers} />
+        <Suspense fallback={<OffersBrowserSkeleton />}>
+          <OffersList searchParams={searchParams} />
         </Suspense>
       </div>
     </main>
