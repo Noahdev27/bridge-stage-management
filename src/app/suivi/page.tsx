@@ -6,6 +6,7 @@ import { checkTrackingStatus, SuiviActionState } from "@/features/suivi/actions"
 import { StatusBadge } from "@/shared/ui/StatusBadge";
 import { formatTrackingCode } from "@/shared/tracking/tracking-code";
 import { SuiviResultSkeleton } from "@/shared/ui/SuiviResultSkeleton";
+import { ResendTrackingCodeForm } from "@/features/suivi/components/ResendTrackingCodeForm";
 import { useToast } from "@/shared/ui/ToastProvider";
 import Link from "next/link";
 import {
@@ -17,6 +18,7 @@ import {
   CalendarClock,
   CalendarDays,
   KeyRound,
+  MessageSquareText,
   Search,
 } from "lucide-react";
 
@@ -139,6 +141,8 @@ export default function SuiviPage() {
           </div>
         </div>
 
+        <ResendTrackingCodeForm />
+
         {isPending && <SuiviResultSkeleton />}
 
         {!isPending && state?.success && c && (
@@ -195,6 +199,38 @@ export default function SuiviPage() {
                   value={formatDate(c.createdAt)}
                 />
               </div>
+
+              {/* Message de la décision. Il a déjà été envoyé par email, mais un
+                  email se perd ou part en indésirables : le suivi par code reste
+                  accessible sans compte, c'est le repli le plus sûr.
+                  La RH ne le renseigne qu'avec une décision finale. */}
+              {c.decisionComment && (
+                <div
+                  className={`rounded-box border p-4 ${
+                    isRejected
+                      ? "border-error/30 bg-error/5"
+                      : "border-success/30 bg-success/5"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <MessageSquareText
+                      className={`w-4 h-4 shrink-0 ${
+                        isRejected ? "text-error" : "text-success"
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <h3 className="text-sm font-semibold text-base-content">
+                      {isRejected
+                        ? "Motif du refus"
+                        : "Message de l'équipe RH"}
+                    </h3>
+                  </div>
+                  {/* whitespace-pre-line — la RH saisit un texte multi-lignes. */}
+                  <p className="text-sm text-base-content/70 whitespace-pre-line mt-2">
+                    {c.decisionComment}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -9,6 +9,9 @@ import StatusChangedEmail from "@/features/notifications/templates/StatusChanged
 import TutorAssignedEmail from "@/features/notifications/templates/TutorAssignedEmail";
 import EmailVerificationEmail from "@/features/notifications/templates/EmailVerificationEmail";
 import PasswordResetEmail from "@/features/notifications/templates/PasswordResetEmail";
+import TrackingCodeReminderEmail, {
+  type TrackingCodeReminderItem,
+} from "@/features/notifications/templates/TrackingCodeReminderEmail";
 
 /**
  * Envoi des emails transactionnels.
@@ -102,6 +105,34 @@ export const notifyPasswordReset = async ({
   await safeSend({
     to,
     subject: "Réinitialisation de votre mot de passe - Bridge",
+    html,
+  });
+};
+
+export const notifyTrackingCodeReminder = async ({
+  to,
+  candidateName,
+  items,
+  suiviUrl,
+}: {
+  to: string;
+  candidateName: string;
+  items: TrackingCodeReminderItem[];
+  suiviUrl: string;
+}) => {
+  const html = await render(
+    <TrackingCodeReminderEmail
+      candidateName={candidateName}
+      items={items}
+      suiviUrl={suiviUrl}
+    />
+  );
+  await safeSend({
+    to,
+    subject:
+      items.length > 1
+        ? "Vos codes de suivi - Bridge"
+        : "Votre code de suivi - Bridge",
     html,
   });
 };

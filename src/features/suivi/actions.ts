@@ -1,7 +1,8 @@
 "use server";
 
-import { trackingCodeSchema } from "./schema";
+import { trackingCodeResendSchema, trackingCodeSchema } from "./schema";
 import { getCandidatureByTrackingCode } from "./queries";
+import { resendTrackingCodes } from "./tracking-code-resend";
 
 export type SuiviActionState = {
   error?: string;
@@ -14,6 +15,11 @@ export type SuiviActionState = {
     createdAt: Date;
     startDate: Date;
     duration: string;
+    /**
+     * Message joint par la RH à sa décision. Déjà envoyé par email au candidat :
+     * le reprendre ici évite qu'il soit perdu avec l'email.
+     */
+    decisionComment: string | null;
     profile: {
       firstName: string;
       lastName: string;
@@ -61,6 +67,7 @@ export async function checkTrackingStatus(
         createdAt: candidature.createdAt,
         startDate: candidature.startDate,
         duration: candidature.duration,
+        decisionComment: candidature.decisionComment,
         profile: {
           firstName: candidature.profile.firstName,
           lastName: candidature.profile.lastName,
@@ -75,4 +82,40 @@ export async function checkTrackingStatus(
       candidature: null,
     };
   }
+}
+
+export type ResendCodeActionState = {
+  error?: string;
+  success?: boolean;
+};
+
+/**
+ * Renvoie le code de suivi à l'adresse du dossier.
+ *
+ * La réponse est toujours la même, qu'un dossier existe ou non : ce formulaire
+ * est public, il ne doit pas permettre de tester si une adresse a candidaté.
+ * Le code lui-même ne transite que par email.
+ */
+export async function resendTrackingCode(
+  _prev: ResendCodeActionState,
+  formData: FormData
+): Promise<ResendCodeActionState> {
+  const parsed = trackingCodeResendSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Email invalide." };
+  }
+
+  try {
+    await resendTrackingCodes(parsed.data.email);
+  } catch (error) {
+    console.error("[suivi-actions] Erreur renvoi du code de suivi:", error);
+    return {
+      error: "Une erreur serveur est survenue. Veuillez réessayer plus tard.",
+    };
+  }
+
+  return { success: true };
 }

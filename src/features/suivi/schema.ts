@@ -30,3 +30,16 @@ export const trackingCodeSchema = z.object({
 });
 
 export type TrackingCodeInput = z.infer<typeof trackingCodeSchema>;
+
+/**
+ * Adresse saisie dans « J'ai perdu mon code ». Normalisée comme à la
+ * candidature (trim + minuscules) pour retomber sur le même `Profile.email`.
+ */
+export const trackingCodeResendSchema = z.object({
+  email: z
+    .string()
+    .min(1, "L'email est requis.")
+    .email("Email invalide.")
+    .max(255)
+    .transform((value) => value.trim().toLowerCase()),
+});

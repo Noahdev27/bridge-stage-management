@@ -126,6 +126,11 @@ model Profile {
   field  String
   level  String
 
+  /// Dernier renvoi du code de suivi à cette adresse, via « J'ai perdu mon
+  /// code » sur /suivi. Sert uniquement de palier anti-abus : le formulaire est
+  /// public, sans cette mesure il permettrait d'inonder la boîte d'un tiers.
+  trackingCodeSentAt DateTime?
+
   request InternshipRequest?
 }
 
