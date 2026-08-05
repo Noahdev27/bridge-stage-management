@@ -84,6 +84,12 @@ model InternshipRequest {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
+  /// Message facultatif rédigé par la RH au moment d'accepter ou de refuser le
+  /// dossier (motif du refus, consignes d'intégration…). Il est repris tel quel
+  /// dans l'email de changement de statut : c'est la seule trace de la décision
+  /// côté candidat, donc on le conserve pour que la RH sache ce qui a été envoyé.
+  decisionComment String?
+
   profile    Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId  String     @unique
   documents  Document[]

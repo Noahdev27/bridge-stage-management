@@ -7,17 +7,26 @@ const colors = {
   background: '#D6F2FE',
   white: '#ffffff',
   text: '#000000',
+  danger: '#B91C1C',
+  border: '#E5E7EB',
 };
 
-export default function StatusChangedEmail({ 
-  candidateName, 
-  status, 
-  trackingCode 
-}: { 
-  candidateName: string; 
-  status: string; 
-  trackingCode: string; 
+export default function StatusChangedEmail({
+  candidateName,
+  status,
+  trackingCode,
+  comment,
+  isRejection = false,
+}: {
+  candidateName: string;
+  status: string;
+  trackingCode: string;
+  /** Message facultatif de la RH : motif du refus ou consignes d'intégration. */
+  comment?: string | null;
+  isRejection?: boolean;
 }) {
+  const trimmedComment = comment?.trim();
+
   return (
     <Html>
       <Body style={{ fontFamily: 'Montserrat, sans-serif', backgroundColor: colors.background, padding: '20px' }}>
@@ -40,6 +49,43 @@ export default function StatusChangedEmail({
               {status}
             </Text>
           </Section>
+
+          {trimmedComment && (
+            <Section
+              style={{
+                marginTop: '20px',
+                padding: '15px',
+                borderRadius: '5px',
+                backgroundColor: colors.white,
+                borderLeft: `4px solid ${isRejection ? colors.danger : colors.primary}`,
+                border: `1px solid ${colors.border}`,
+              }}
+            >
+              <Text
+                style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  color: isRejection ? colors.danger : colors.primary,
+                }}
+              >
+                {isRejection ? 'Motif' : 'Message de notre équipe'}
+              </Text>
+              {/* whiteSpace: pre-line — la RH saisit un texte libre multi-lignes. */}
+              <Text
+                style={{
+                  margin: '0',
+                  fontSize: '15px',
+                  color: colors.text,
+                  whiteSpace: 'pre-line',
+                }}
+              >
+                {trimmedComment}
+              </Text>
+            </Section>
+          )}
 
           <Text style={{ fontSize: '14px', marginTop: '20px' }}>
             Code de suivi : <strong>{formatTrackingCode(trackingCode)}</strong>

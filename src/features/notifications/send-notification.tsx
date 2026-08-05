@@ -43,12 +43,15 @@ export const notifyStatusChange = async (
   name: string,
   status: RequestStatus,
   code: string,
+  comment?: string | null,
 ) => {
   const html = await render(
     <StatusChangedEmail
       candidateName={name}
       status={STATUS_LABELS[status]}
       trackingCode={code}
+      comment={comment}
+      isRejection={status === "REJECTED"}
     />
   );
   await safeSend({

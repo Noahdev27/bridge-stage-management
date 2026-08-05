@@ -70,3 +70,31 @@ export type RequestEvaluationInput = z.infer<typeof requestEvaluationSchema>;
 export const assignTutorSchema = z.object({
   tutorId: z.string().min(1).nullable(),
 });
+
+/**
+ * Changement de statut avec message facultatif au candidat.
+ *
+ * Le commentaire part par email et n'a de sens que sur une décision finale
+ * (acceptation / refus) : le refuser ailleurs évite qu'un aller-retour
+ * « En attente → Traitement » n'expédie un motif de refus au candidat.
+ */
+export const DECISION_STATUSES = ["ACCEPTED", "REJECTED"] as const;
+
+export const DECISION_COMMENT_MAX = 2000;
+
+export const statusUpdateSchema = z.object({
+  status: z.nativeEnum(RequestStatus),
+  comment: z
+    .string()
+    .max(
+      DECISION_COMMENT_MAX,
+      `Le commentaire ne doit pas dépasser ${DECISION_COMMENT_MAX} caractères.`
+    )
+    .optional(),
+});
+
+export type StatusUpdateInput = z.infer<typeof statusUpdateSchema>;
+
+export function isDecisionStatus(status: RequestStatus): boolean {
+  return (DECISION_STATUSES as readonly RequestStatus[]).includes(status);
+}

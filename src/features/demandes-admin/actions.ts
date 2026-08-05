@@ -7,7 +7,11 @@ import {
   notifyStatusChange,
   notifyTutorAssignment,
 } from "@/features/notifications/send-notification";
-import { requestEvaluationSchema } from "./schema";
+import {
+  isDecisionStatus,
+  requestEvaluationSchema,
+  statusUpdateSchema,
+} from "./schema";
 import { runRejectedPurge } from "./purge";
 import type { RequestStatus } from "@prisma/client";
 
@@ -28,7 +32,8 @@ const ALLOWED_STATUSES: RequestStatus[] = [
 
 export async function updateCandidatureStatus(
   id: string,
-  newStatus: RequestStatus
+  newStatus: RequestStatus,
+  comment?: string
 ): Promise<AdminActionState> {
   try {
     await requireManager();
@@ -36,6 +41,23 @@ export async function updateCandidatureStatus(
     if (!ALLOWED_STATUSES.includes(newStatus)) {
       return { error: "Statut de candidature invalide." };
     }
+
+    const parsed = statusUpdateSchema.safeParse({
+      status: newStatus,
+      comment: comment || undefined,
+    });
+
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0]?.message ?? "Données invalides.";
+      return { error: firstError };
+    }
+
+    // Le message n'accompagne qu'une décision finale : sur un retour en
+    // « En attente » ou « Traitement », on efface celui d'une décision passée
+    // pour ne pas le réexpédier plus tard hors contexte.
+    const decisionComment = isDecisionStatus(newStatus)
+      ? parsed.data.comment?.trim() || null
+      : null;
 
     const request = await prisma.internshipRequest.findUnique({
       where: { id },
@@ -48,14 +70,15 @@ export async function updateCandidatureStatus(
 
     await prisma.internshipRequest.update({
       where: { id },
-      data: { status: newStatus },
+      data: { status: newStatus, decisionComment },
     });
 
     await notifyStatusChange(
       request.profile.email,
       `${request.profile.firstName} ${request.profile.lastName}`,
       newStatus,
-      request.trackingCode
+      request.trackingCode,
+      decisionComment
     );
 
     revalidatePath("/admin");

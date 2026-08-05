@@ -17,6 +17,7 @@ import {
   Briefcase,
   Star,
   UserCheck,
+  MessageSquareText,
 } from "lucide-react";
 import { DEPARTMENT_LABELS } from "@/shared/constants/domain";
 
@@ -55,8 +56,17 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
     );
   }
 
-  const { profile, documents, status, type, createdAt, evaluation, tutor, offer } =
-    candidature;
+  const {
+    profile,
+    documents,
+    status,
+    type,
+    createdAt,
+    evaluation,
+    tutor,
+    offer,
+    decisionComment,
+  } = candidature;
 
   return (
     <main className="p-6 max-w-4xl mx-auto">
@@ -97,8 +107,45 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
           </p>
         </div>
 
-        {isManager && <StatusActionBar requestId={id} status={status} />}
+        {isManager && (
+          <StatusActionBar
+            requestId={id}
+            status={status}
+            decisionComment={decisionComment}
+          />
+        )}
       </div>
+
+      {/* Trace de ce que le candidat a réellement reçu avec sa décision. */}
+      {decisionComment && (
+        <div
+          className={`card bg-base-100 border shadow-sm mb-8 ${
+            status === "REJECTED" ? "border-error/30" : "border-success/30"
+          }`}
+        >
+          <div className="card-body p-5 gap-2">
+            <div className="flex items-center gap-2">
+              <MessageSquareText
+                className={`w-5 h-5 ${
+                  status === "REJECTED" ? "text-error" : "text-success"
+                }`}
+                aria-hidden="true"
+              />
+              <h2 className="card-title text-lg">
+                {status === "REJECTED"
+                  ? "Motif communiqué au candidat"
+                  : "Message communiqué au candidat"}
+              </h2>
+            </div>
+            <p className="text-sm text-base-content/70 whitespace-pre-line">
+              {decisionComment}
+            </p>
+            <p className="text-xs text-base-content/40">
+              Envoyé par email à {profile.email}.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
