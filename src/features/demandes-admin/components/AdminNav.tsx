@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   FileText,
   Users,
+  ShieldCheck,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -20,6 +21,7 @@ const ITEMS: NavItem[] = [
   { href: "/admin", label: "Demandes", icon: FileText },
   { href: "/admin/offres", label: "Offres", icon: LayoutDashboard },
   { href: "/admin/tuteurs", label: "Tuteurs", icon: Users },
+  { href: "/admin/rh", label: "Comptes RH", icon: ShieldCheck },
   { href: "/admin/parametres", label: "Paramètres", icon: Settings },
 ];
 
