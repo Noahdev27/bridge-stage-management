@@ -8,6 +8,7 @@ import SubmissionConfirmationEmail from "@/features/notifications/templates/Subm
 import StatusChangedEmail from "@/features/notifications/templates/StatusChangedEmail";
 import TutorAssignedEmail from "@/features/notifications/templates/TutorAssignedEmail";
 import EmailVerificationEmail from "@/features/notifications/templates/EmailVerificationEmail";
+import PasswordResetEmail from "@/features/notifications/templates/PasswordResetEmail";
 
 /**
  * Envoi des emails transactionnels.
@@ -79,6 +80,28 @@ export const notifyEmailVerification = async ({
   await safeSend({
     to,
     subject: "Confirmez votre adresse email - Bridge",
+    html,
+  });
+};
+
+export const notifyPasswordReset = async ({
+  to,
+  candidateName,
+  resetUrl,
+}: {
+  to: string;
+  candidateName: string | null;
+  resetUrl: string;
+}) => {
+  const html = await render(
+    <PasswordResetEmail
+      candidateName={candidateName || "Candidat"}
+      resetUrl={resetUrl}
+    />
+  );
+  await safeSend({
+    to,
+    subject: "Réinitialisation de votre mot de passe - Bridge",
     html,
   });
 };

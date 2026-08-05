@@ -48,6 +48,14 @@ export function CandidateLoginForm() {
         <button type="submit" className="btn btn-primary" disabled={isPending}>
           {isPending ? "Connexion…" : "Se connecter"}
         </button>
+        <p className="text-sm text-center">
+          <Link
+            href="/candidat/mot-de-passe-oublie"
+            className="link link-primary"
+          >
+            Mot de passe oublié ?
+          </Link>
+        </p>
         <p className="text-sm text-base-content/60 text-center">
           Pas de compte ?{" "}
           <Link href="/candidat/inscription" className="link link-primary">

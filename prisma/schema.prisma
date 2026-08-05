@@ -56,6 +56,12 @@ model User {
   verificationTokenHash      String?   @unique
   verificationTokenExpiresAt DateTime?
 
+  /// SHA-256 du jeton de réinitialisation de mot de passe, émis par « Mot de
+  /// passe oublié » et effacé dès qu'il est consommé. Même principe que le
+  /// jeton de vérification : le clair n'existe que dans l'email envoyé.
+  passwordResetTokenHash      String?   @unique
+  passwordResetTokenExpiresAt DateTime?
+
   evaluations     RequestEvaluation[]
   tutoredRequests InternshipRequest[] @relation("TutorAssignments")
 }

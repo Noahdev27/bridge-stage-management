@@ -7,7 +7,8 @@ Informer automatiquement le candidat par email à chaque changement de statut
 (et à la soumission, avec le code de suivi).
 
 ## Fichiers
-- `send-notification.tsx` — `notifySubmission`, `notifyStatusChange`, `notifyTutorAssignment`
+- `send-notification.tsx` — `notifySubmission`, `notifyStatusChange`,
+  `notifyTutorAssignment`, `notifyEmailVerification`, `notifyPasswordReset`
 - `templates/` — gabarits React Email (français, palette et typographie Bridge)
 - transport : `shared/mail/mailer.ts` (SMTP via nodemailer)
 

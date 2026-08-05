@@ -3,8 +3,14 @@
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { prisma } from "@/shared/db/prisma";
-import { candidateRegisterSchema, resendVerificationSchema } from "./schema";
+import {
+  candidateRegisterSchema,
+  passwordResetRequestSchema,
+  passwordResetSchema,
+  resendVerificationSchema,
+} from "./schema";
 import { issueEmailVerification } from "./verification";
+import { consumePasswordReset, issuePasswordReset } from "./password-reset";
 import { auth, signIn } from "@/shared/auth/auth";
 
 export type CandidateActionState = {
@@ -146,6 +152,82 @@ export async function resendVerification(
     // Throttlé : ce point d'entrée est public, il ne doit pas servir à inonder
     // la boîte d'un tiers.
     await issueEmailVerification(account, { throttle: true });
+  }
+
+  return { success: true };
+}
+
+/**
+ * Envoie un lien de réinitialisation de mot de passe.
+ *
+ * La réponse est toujours la même, qu'un compte existe ou non : ce formulaire
+ * public ne doit pas permettre de tester si une adresse est inscrite.
+ */
+export async function requestPasswordReset(
+  _prev: CandidateActionState,
+  formData: FormData
+): Promise<CandidateActionState> {
+  const parsed = passwordResetRequestSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Email invalide." };
+  }
+
+  const account = await prisma.user.findUnique({
+    where: { email: parsed.data.email },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      emailVerifiedAt: true,
+      passwordResetTokenExpiresAt: true,
+    },
+  });
+
+  // Réservé aux comptes candidats déjà confirmés : voir `password-reset.ts`
+  // pour le détail des comptes volontairement exclus de ce parcours.
+  if (account && account.role === "CANDIDATE" && account.emailVerifiedAt) {
+    await issuePasswordReset(account);
+  }
+
+  return { success: true };
+}
+
+/** Valide le jeton reçu par email et enregistre le nouveau mot de passe. */
+export async function resetPassword(
+  _prev: CandidateActionState,
+  formData: FormData
+): Promise<CandidateActionState> {
+  const parsed = passwordResetSchema.safeParse({
+    token: formData.get("token"),
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Données invalides." };
+  }
+
+  const outcome = await consumePasswordReset(
+    parsed.data.token,
+    parsed.data.password
+  );
+
+  if (outcome === "expired") {
+    return {
+      error:
+        "Ce lien a dépassé sa durée de validité d'une heure. Demandez-en un nouveau.",
+    };
+  }
+
+  if (outcome === "invalid") {
+    return {
+      error:
+        "Ce lien est incorrect ou a déjà été utilisé. Demandez-en un nouveau.",
+    };
   }
 
   return { success: true };

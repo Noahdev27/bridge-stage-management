@@ -37,3 +37,25 @@ export const candidateLoginSchema = z.object({
 export const resendVerificationSchema = z.object({
   email: emailSchema,
 });
+
+export const passwordResetRequestSchema = z.object({
+  email: emailSchema,
+});
+
+/**
+ * Le jeton transite par un champ caché du formulaire : il est validé côté
+ * serveur avant toute écriture, comme s'il venait de l'URL.
+ */
+export const passwordResetSchema = z
+  .object({
+    token: z.string().min(1, "Lien de réinitialisation invalide."),
+    password: z
+      .string()
+      .min(8, "Le mot de passe doit contenir au moins 8 caractères.")
+      .max(128, "Le mot de passe ne doit pas dépasser 128 caractères."),
+    confirmPassword: z.string().min(1, "Confirmez le mot de passe."),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Les mots de passe ne correspondent pas.",
+    path: ["confirmPassword"],
+  });

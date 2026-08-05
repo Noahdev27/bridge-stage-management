@@ -1,7 +1,8 @@
 import "server-only";
 
-import { createHash, randomBytes } from "crypto";
 import { prisma } from "@/shared/db/prisma";
+import { createRawToken, hashToken } from "@/shared/auth/tokens";
+import { getAppUrl } from "@/shared/config/app-url";
 import { notifyEmailVerification } from "@/features/notifications/send-notification";
 
 /**
@@ -32,24 +33,6 @@ export type VerificationOutcome =
   | "already-verified"
   | "expired"
   | "invalid";
-
-/**
- * Seul le hash du jeton est stocké : une fuite de la base ne permet pas de
- * valider un compte à la place de son titulaire.
- */
-function hashToken(rawToken: string): string {
-  return createHash("sha256").update(rawToken).digest("hex");
-}
-
-/**
- * URL publique de l'application, pour construire un lien absolu cliquable
- * depuis un client mail.
- */
-function getAppUrl(): string {
-  if (process.env.AUTH_URL) return process.env.AUTH_URL.replace(/\/+$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
 
 /**
  * Date d'émission du jeton courant, déduite de son expiration : évite d'ajouter
@@ -83,7 +66,7 @@ export async function issueEmailVerification(
     return false;
   }
 
-  const rawToken = randomBytes(32).toString("base64url");
+  const rawToken = createRawToken();
 
   await prisma.user.update({
     where: { id: user.id },
