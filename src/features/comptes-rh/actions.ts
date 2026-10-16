@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/shared/db/prisma";
 import { AuthorizationError, requireManager } from "@/shared/auth/guards";
+import { recordAudit } from "@/shared/audit/audit";
 import { createRhSchema, updateRhSchema } from "./schema";
 
 /**
@@ -51,7 +52,7 @@ export async function createRh(
   formData: FormData
 ): Promise<RhActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     const parsed = createRhSchema.safeParse({
       email: (formData.get("email") ?? "").toString(),
@@ -93,6 +94,14 @@ export async function createRh(
       select: { id: true },
     });
 
+    await recordAudit(actor, {
+      action: "account.rh_created",
+      summary: `Compte RH ${parsed.data.email} créé`,
+      targetType: "user",
+      targetId: rh.id,
+      metadata: { email: parsed.data.email, role: "RH" },
+    });
+
     revalidateRhPaths(rh.id);
 
     return { success: true, rhId: rh.id };
@@ -109,13 +118,13 @@ export async function updateRhName(
   formData: FormData
 ): Promise<RhActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     // `role: "RH"` dans le filtre : empêche de détourner cette action pour
     // renommer un ADMIN ou n'importe quel autre compte.
     const existing = await prisma.user.findFirst({
       where: { id, role: "RH" },
-      select: { id: true },
+      select: { id: true, email: true, name: true },
     });
 
     if (!existing) {
@@ -138,6 +147,16 @@ export async function updateRhName(
       data: { name: parsed.data.name },
     });
 
+    if (existing.name !== parsed.data.name) {
+      await recordAudit(actor, {
+        action: "account.rh_renamed",
+        summary: `Compte RH ${existing.email} : « ${existing.name ?? ""} » → « ${parsed.data.name} »`,
+        targetType: "user",
+        targetId: id,
+        metadata: { from: existing.name, to: parsed.data.name },
+      });
+    }
+
     revalidateRhPaths(id);
 
     return { success: true, rhId: id };
@@ -158,7 +177,7 @@ export async function deleteRh(id: string): Promise<RhActionState> {
 
     const existing = await prisma.user.findFirst({
       where: { id, role: "RH" },
-      select: { id: true },
+      select: { id: true, email: true, name: true },
     });
 
     if (!existing) {
@@ -168,6 +187,14 @@ export async function deleteRh(id: string): Promise<RhActionState> {
     // onDelete: SetNull sur RequestEvaluation.authorId : les évaluations
     // rédigées par ce compte sont conservées, seule la signature disparaît.
     await prisma.user.delete({ where: { id } });
+
+    await recordAudit(viewer, {
+      action: "account.rh_deleted",
+      summary: `Compte RH ${existing.email} supprimé`,
+      targetType: "user",
+      targetId: id,
+      metadata: { email: existing.email, role: "RH" },
+    });
 
     revalidateRhPaths();
 

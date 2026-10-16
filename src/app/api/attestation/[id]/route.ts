@@ -6,6 +6,7 @@ import {
   getAttestationRequest,
 } from "@/features/attestation/queries";
 import { loadAttestationBranding } from "@/features/attestation/settings";
+import { recordAudit } from "@/shared/audit/audit";
 
 /**
  * Délivre l'attestation de stage d'un dossier accepté.
@@ -19,7 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireManager();
+    const actor = await requireManager();
     const { id } = await params;
 
     const internship = await getAttestationRequest(id);
@@ -56,6 +57,18 @@ export async function GET(
       ensureAttestationRef(id, issuedAt),
       loadAttestationBranding(),
     ]);
+
+    // Seule la première délivrance est tracée : la consultation ou la
+    // réimpression d'un document déjà délivré n'en crée pas un nouveau.
+    if (!internship.attestationRef) {
+      await recordAudit(actor, {
+        action: "attestation.issued",
+        summary: `Attestation ${reference} délivrée`,
+        targetType: "request",
+        targetId: id,
+        metadata: { reference },
+      });
+    }
 
     const html = renderAttestationHtml(internship, {
       reference,

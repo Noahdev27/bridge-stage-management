@@ -192,3 +192,33 @@ model RequestEvaluation {
   author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
   authorId String?
 }
+
+/// Journal d'audit des actions du back-office.
+///
+/// L'auteur est enregistré par son email plutôt que par une relation : la trace
+/// doit survivre à la suppression du compte qui a agi.
+///
+/// Aucune donnée personnelle de candidat n'y est écrite (ni nom ni email) : la
+/// purge RGPD des dossiers rejetés serait sinon contournée par le journal. Un
+/// dossier est désigné par son identifiant, et la page du journal retrouve le
+/// nom du candidat tant que le dossier existe.
+model AuditLog {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+
+  actorEmail String
+  actorRole  String?
+
+  /// Code stable, par exemple `request.status_changed` ou `auth.login_failed`.
+  action     String
+  targetType String?
+  targetId   String?
+
+  /// Phrase lisible, figée au moment de l'action.
+  summary    String
+  metadata   Json?
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([actorEmail])
+}

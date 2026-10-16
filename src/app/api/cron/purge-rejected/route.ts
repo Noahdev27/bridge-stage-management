@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { runRejectedPurge } from "@/features/demandes-admin/purge";
+import { SYSTEM_ACTOR, recordAudit } from "@/shared/audit/audit";
 
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -12,6 +13,17 @@ export async function GET(request: NextRequest) {
 
   try {
     const { purgedCount } = await runRejectedPurge();
+
+    // Une passe sans effet n'est pas consignée : le cron tourne chaque nuit et
+    // noierait le journal sous des entrées vides.
+    if (purgedCount > 0) {
+      await recordAudit(SYSTEM_ACTOR, {
+        action: "request.purged",
+        summary: `Purge automatique : ${purgedCount} dossier(s) rejeté(s) supprimé(s)`,
+        metadata: { purgedCount, trigger: "cron" },
+      });
+    }
+
     revalidatePath("/admin");
 
     return NextResponse.json({ success: true, purgedCount });

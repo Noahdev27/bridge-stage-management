@@ -8,6 +8,7 @@ export default async function AdminShellLayout({
 }) {
   const session = await auth();
   const email = session?.user?.email ?? "";
+  const isAdmin = session?.user?.role === "ADMIN";
 
   async function logout() {
     "use server";
@@ -15,7 +16,7 @@ export default async function AdminShellLayout({
   }
 
   return (
-    <AdminShell email={email} logoutAction={logout}>
+    <AdminShell email={email} isAdmin={isAdmin} logoutAction={logout}>
       {children}
     </AdminShell>
   );

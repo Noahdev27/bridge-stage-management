@@ -15,6 +15,7 @@ import { validateSignatureImage } from "@/shared/validation/file";
 import { attestationIssueSchema, parseDateOnly } from "./schema";
 import { SIGNATURE_STORAGE_PATH, STAMP_STORAGE_PATH } from "./constants";
 import { getAttestationSettings, saveAttestationSettings } from "./settings";
+import { recordAudit } from "@/shared/audit/audit";
 
 export type AttestationActionState = {
   error?: string;
@@ -33,7 +34,7 @@ export async function saveInternshipPeriod(
   formData: FormData
 ): Promise<AttestationActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     const parsed = attestationIssueSchema.safeParse({
       startDate: formData.get("startDate"),
@@ -47,7 +48,7 @@ export async function saveInternshipPeriod(
 
     const request = await prisma.internshipRequest.findUnique({
       where: { id: requestId },
-      select: { status: true },
+      select: { status: true, attestationRef: true },
     });
 
     if (!request) {
@@ -67,6 +68,15 @@ export async function saveInternshipPeriod(
         startDate: parseDateOnly(parsed.data.startDate),
         endDate: parseDateOnly(parsed.data.endDate),
       },
+    });
+
+    await recordAudit(actor, {
+      action: "attestation.period_saved",
+      summary: `Période du ${parsed.data.startDate} au ${parsed.data.endDate}`
+        + (request.attestationRef ? ` (attestation ${request.attestationRef} déjà délivrée)` : ""),
+      targetType: "request",
+      targetId: requestId,
+      metadata: { startDate: parsed.data.startDate, endDate: parsed.data.endDate },
     });
 
     revalidatePath(`/admin/${requestId}`);
@@ -133,6 +143,14 @@ export async function uploadAttestationBranding(
       admin.email
     );
 
+    await recordAudit(admin, {
+      action: "attestation.branding_uploaded",
+      summary: `${target.label} ${previousPath ? "remplacé(e)" : "installé(e)"}`,
+      targetType: "attestation",
+      targetId: slot,
+      metadata: { slot, storagePath, replaced: !!previousPath },
+    });
+
     // Un changement d'extension laisserait l'ancien fichier orphelin dans le bucket.
     if (previousPath && previousPath !== storagePath) {
       await deleteStoragePaths([previousPath]);
@@ -168,6 +186,14 @@ export async function removeAttestationBranding(
       admin.email
     );
     await deleteStoragePaths([currentPath]);
+
+    await recordAudit(admin, {
+      action: "attestation.branding_removed",
+      summary: `${BRANDING_SLOTS[slot].label} retiré(e)`,
+      targetType: "attestation",
+      targetId: slot,
+      metadata: { slot },
+    });
 
     revalidatePath("/admin/parametres");
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/shared/db/prisma";
 import { AuthorizationError, requireManager } from "@/shared/auth/guards";
 import { offerFormSchema } from "./schema";
+import { recordAudit } from "@/shared/audit/audit";
 
 export type OfferActionState = {
   error?: string;
@@ -51,7 +52,7 @@ export async function createOffer(
   formData: FormData
 ): Promise<OfferActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     const values = extractFormValues(formData);
     const parsed = offerFormSchema.safeParse(values);
@@ -65,6 +66,13 @@ export async function createOffer(
 
     const offer = await prisma.internshipOffer.create({
       data: parsed.data,
+    });
+
+    await recordAudit(actor, {
+      action: "offer.created",
+      summary: `Offre « ${offer.title} » créée${offer.isPublished ? " et publiée" : ""}`,
+      targetType: "offer",
+      targetId: offer.id,
     });
 
     revalidateOfferPaths(offer.id);
@@ -83,11 +91,11 @@ export async function updateOffer(
   formData: FormData
 ): Promise<OfferActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     const existing = await prisma.internshipOffer.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, title: true },
     });
 
     if (!existing) {
@@ -109,6 +117,15 @@ export async function updateOffer(
       data: parsed.data,
     });
 
+    await recordAudit(actor, {
+      action: "offer.updated",
+      summary: existing.title === parsed.data.title
+        ? `Offre « ${parsed.data.title} » modifiée`
+        : `Offre « ${existing.title} » modifiée (renommée « ${parsed.data.title} »)`,
+      targetType: "offer",
+      targetId: id,
+    });
+
     revalidateOfferPaths(id);
 
     return { success: true, offerId: id };
@@ -124,11 +141,11 @@ export async function togglePublishOffer(
   nextPublished: boolean
 ): Promise<OfferActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     const existing = await prisma.internshipOffer.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, title: true },
     });
 
     if (!existing) {
@@ -138,6 +155,13 @@ export async function togglePublishOffer(
     await prisma.internshipOffer.update({
       where: { id },
       data: { isPublished: nextPublished },
+    });
+
+    await recordAudit(actor, {
+      action: nextPublished ? "offer.published" : "offer.unpublished",
+      summary: `Offre « ${existing.title} » ${nextPublished ? "publiée" : "dépubliée"}`,
+      targetType: "offer",
+      targetId: id,
     });
 
     revalidateOfferPaths(id);
@@ -154,11 +178,11 @@ export async function togglePublishOffer(
 
 export async function deleteOffer(id: string): Promise<OfferActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     const existing = await prisma.internshipOffer.findUnique({
       where: { id },
-      select: { id: true, _count: { select: { requests: true } } },
+      select: { id: true, title: true, _count: { select: { requests: true } } },
     });
 
     if (!existing) {
@@ -173,6 +197,12 @@ export async function deleteOffer(id: string): Promise<OfferActionState> {
         where: { id },
         data: { isPublished: false },
       });
+      await recordAudit(actor, {
+        action: "offer.unpublished",
+        summary: `Offre « ${existing.title} » dépubliée au lieu d'être supprimée (liée à ${existing._count.requests} candidature(s))`,
+        targetType: "offer",
+        targetId: id,
+      });
       revalidateOfferPaths(id);
       return {
         error:
@@ -181,6 +211,13 @@ export async function deleteOffer(id: string): Promise<OfferActionState> {
     }
 
     await prisma.internshipOffer.delete({ where: { id } });
+
+    await recordAudit(actor, {
+      action: "offer.deleted",
+      summary: `Offre « ${existing.title} » supprimée`,
+      targetType: "offer",
+      targetId: id,
+    });
 
     revalidateOfferPaths();
 

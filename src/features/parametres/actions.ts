@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/shared/db/prisma";
 import { AuthorizationError, requireStaff } from "@/shared/auth/guards";
 import { changePasswordSchema, updateProfileSchema } from "./schema";
+import { recordAudit } from "@/shared/audit/audit";
 
 export type ParametresActionState = {
   error?: string;
@@ -75,6 +76,13 @@ export async function changePassword(
       data: { password: hashedPassword },
     });
 
+    await recordAudit(viewer, {
+      action: "auth.password_changed",
+      summary: "Mot de passe modifié par son titulaire",
+      targetType: "user",
+      targetId: user.id,
+    });
+
     revalidatePath("/admin/parametres");
 
     return { success: true };
@@ -105,9 +113,17 @@ export async function updateProfileName(
       };
     }
 
-    await prisma.user.update({
+    const account = await prisma.user.update({
       where: { email: viewer.email },
       data: { name: parsed.data.name },
+      select: { id: true },
+    });
+
+    await recordAudit(viewer, {
+      action: "account.profile_renamed",
+      summary: `Nom de profil changé en « ${parsed.data.name} »`,
+      targetType: "user",
+      targetId: account.id,
     });
 
     revalidatePath("/admin/parametres");

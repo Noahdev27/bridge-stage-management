@@ -8,10 +8,12 @@ import { AdminNav } from "./AdminNav";
 
 export function AdminShell({
   email,
+  isAdmin = false,
   logoutAction,
   children,
 }: {
   email: string;
+  isAdmin?: boolean;
   logoutAction: () => Promise<void>;
   children: React.ReactNode;
 }) {
@@ -38,7 +40,7 @@ export function AdminShell({
           </Link>
         </div>
         <nav className="flex-1 p-3 overflow-y-auto">
-          <AdminNav />
+          <AdminNav isAdmin={isAdmin} />
         </nav>
         <div className="p-4 border-t border-base-300 text-xs text-base-content/40">
           Espace RH — Bridge
@@ -78,7 +80,7 @@ export function AdminShell({
                 tabIndex={0}
                 className="dropdown-content mt-2 w-56 rounded-box bg-base-100 border border-base-300 shadow-lg p-2 z-30"
               >
-                <AdminNav />
+                <AdminNav isAdmin={isAdmin} />
               </div>
             </div>
 

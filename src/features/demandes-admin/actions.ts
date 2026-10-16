@@ -13,6 +13,8 @@ import {
   statusUpdateSchema,
 } from "./schema";
 import { runRejectedPurge } from "./purge";
+import { recordAudit } from "@/shared/audit/audit";
+import { STATUS_LABELS } from "@/shared/constants/domain";
 import type { RequestStatus } from "@prisma/client";
 
 export type AdminActionState = {
@@ -36,7 +38,7 @@ export async function updateCandidatureStatus(
   comment?: string
 ): Promise<AdminActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     if (!ALLOWED_STATUSES.includes(newStatus)) {
       return { error: "Statut de candidature invalide." };
@@ -71,6 +73,16 @@ export async function updateCandidatureStatus(
     await prisma.internshipRequest.update({
       where: { id },
       data: { status: newStatus, decisionComment },
+    });
+
+    // Le texte du message n'est pas recopié : il peut contenir des données
+    // personnelles, et il reste consultable sur le dossier.
+    await recordAudit(actor, {
+      action: "request.status_changed",
+      summary: `Statut « ${STATUS_LABELS[request.status]} » → « ${STATUS_LABELS[newStatus]} »`,
+      targetType: "request",
+      targetId: id,
+      metadata: { from: request.status, to: newStatus, withComment: !!decisionComment },
     });
 
     await notifyStatusChange(
@@ -126,6 +138,11 @@ export async function saveRequestEvaluation(
 
     const comment = parsed.data.comment?.trim() || null;
 
+    const previousEvaluation = await prisma.requestEvaluation.findUnique({
+      where: { requestId },
+      select: { rating: true },
+    });
+
     await prisma.requestEvaluation.upsert({
       where: { requestId },
       create: {
@@ -139,6 +156,16 @@ export async function saveRequestEvaluation(
         comment,
         authorId: author?.id,
       },
+    });
+
+    await recordAudit(user, {
+      action: "request.evaluated",
+      summary: previousEvaluation
+        ? `Note ${previousEvaluation.rating}/5 → ${parsed.data.rating}/5`
+        : `Note ${parsed.data.rating}/5`,
+      targetType: "request",
+      targetId: requestId,
+      metadata: { from: previousEvaluation?.rating ?? null, to: parsed.data.rating },
     });
 
     revalidatePath(`/admin/${requestId}`);
@@ -159,11 +186,14 @@ export async function assignTutor(
   tutorId: string | null
 ): Promise<AdminActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     const request = await prisma.internshipRequest.findUnique({
       where: { id: requestId },
-      include: { profile: { select: { firstName: true, lastName: true } } },
+      include: {
+        profile: { select: { firstName: true, lastName: true } },
+        tutor: { select: { name: true, email: true } },
+      },
     });
 
     if (!request) {
@@ -185,6 +215,27 @@ export async function assignTutor(
       where: { id: requestId },
       data: { tutorId },
     });
+
+    if ((tutor?.id ?? null) !== request.tutorId) {
+      const previous = request.tutor?.name || request.tutor?.email;
+      await recordAudit(actor, tutor
+        ? {
+            action: "request.tutor_assigned",
+            summary: previous
+              ? `Tuteur ${previous} remplacé par ${tutor.name || tutor.email}`
+              : `Tuteur ${tutor.name || tutor.email} affecté`,
+            targetType: "request",
+            targetId: requestId,
+            metadata: { from: request.tutorId, to: tutor.id },
+          }
+        : {
+            action: "request.tutor_removed",
+            summary: `Tuteur ${previous ?? "inconnu"} retiré`,
+            targetType: "request",
+            targetId: requestId,
+            metadata: { from: request.tutorId },
+          });
+    }
 
     // Notification dédiée au tuteur nouvellement affecté (cf. CDC Phase 2).
     if (tutor && tutor.id !== request.tutorId) {
@@ -211,9 +262,15 @@ export async function assignTutor(
 
 export async function purgeRejectedApplications(): Promise<AdminActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     const { purgedCount } = await runRejectedPurge();
+
+    await recordAudit(actor, {
+      action: "request.purged",
+      summary: `Purge manuelle : ${purgedCount} dossier(s) rejeté(s) supprimé(s)`,
+      metadata: { purgedCount, trigger: "manual" },
+    });
 
     revalidatePath("/admin");
 

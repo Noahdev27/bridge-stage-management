@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/shared/db/prisma";
 import { AuthorizationError, requireManager } from "@/shared/auth/guards";
+import { recordAudit } from "@/shared/audit/audit";
 import { createTutorSchema, updateTutorSchema } from "./schema";
 
 export type TutorActionState = {
@@ -39,7 +40,7 @@ export async function createTutor(
   formData: FormData
 ): Promise<TutorActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     const parsed = createTutorSchema.safeParse({
       email: (formData.get("email") ?? "").toString(),
@@ -81,6 +82,14 @@ export async function createTutor(
       select: { id: true },
     });
 
+    await recordAudit(actor, {
+      action: "account.tutor_created",
+      summary: `Tuteur ${parsed.data.email} créé`,
+      targetType: "user",
+      targetId: tutor.id,
+      metadata: { email: parsed.data.email, role: "TUTOR" },
+    });
+
     revalidateTutorPaths(tutor.id);
 
     return { success: true, tutorId: tutor.id };
@@ -97,11 +106,11 @@ export async function updateTutorName(
   formData: FormData
 ): Promise<TutorActionState> {
   try {
-    await requireManager();
+    const actor = await requireManager();
 
     const existing = await prisma.user.findFirst({
       where: { id, role: "TUTOR" },
-      select: { id: true },
+      select: { id: true, email: true, name: true },
     });
 
     if (!existing) {
@@ -124,6 +133,16 @@ export async function updateTutorName(
       data: { name: parsed.data.name },
     });
 
+    if (existing.name !== parsed.data.name) {
+      await recordAudit(actor, {
+        action: "account.tutor_renamed",
+        summary: `Tuteur ${existing.email} : « ${existing.name ?? ""} » → « ${parsed.data.name} »`,
+        targetType: "user",
+        targetId: id,
+        metadata: { from: existing.name, to: parsed.data.name },
+      });
+    }
+
     revalidateTutorPaths(id);
 
     return { success: true, tutorId: id };
@@ -144,7 +163,7 @@ export async function deleteTutor(id: string): Promise<TutorActionState> {
 
     const existing = await prisma.user.findFirst({
       where: { id, role: "TUTOR" },
-      select: { id: true },
+      select: { id: true, email: true, name: true },
     });
 
     if (!existing) {
@@ -155,6 +174,14 @@ export async function deleteTutor(id: string): Promise<TutorActionState> {
     // RequestEvaluation.authorId : les dossiers et évaluations liés sont
     // conservés, seule la référence au tuteur est effacée.
     await prisma.user.delete({ where: { id } });
+
+    await recordAudit(viewer, {
+      action: "account.tutor_deleted",
+      summary: `Tuteur ${existing.email} supprimé`,
+      targetType: "user",
+      targetId: id,
+      metadata: { email: existing.email, role: "TUTOR" },
+    });
 
     revalidateTutorPaths();
 
