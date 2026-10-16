@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useActionState, useRef } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { InternshipType } from "@prisma/client";
 import {
   UserRound,
@@ -10,9 +11,8 @@ import {
   ArrowLeft,
   ArrowRight,
   Send,
-  AlertCircle,
 } from "lucide-react";
-import { submitCandidature, type ActionState } from "../actions";
+import { submitCandidature } from "../actions";
 import { step1InfosSchema, step2ParcoursSchema } from "../schema";
 import type { Step1InfosInput, Step2ParcoursInput } from "../schema";
 import { StepInfos } from "./StepInfos";
@@ -20,10 +20,14 @@ import { StepParcours } from "./StepParcours";
 import { StepDocuments } from "./StepDocuments";
 import { StepValidation } from "./StepValidation";
 import { SuccessScreen } from "./SuccessScreen";
+import { CandidatureFormSkeleton } from "./CandidatureFormSkeleton";
+import { writeConfirmationHandoff } from "../confirmation-handoff";
+import { useToast } from "@/shared/ui/ToastProvider";
+import { REQUIRED_DOCUMENTS } from "@/shared/constants/domain";
 
 export type CurrentStep = 1 | 2 | 3 | 4;
 
-export function CandidatureForm() {
+export function CandidatureForm({ offerId }: { offerId?: string }) {
   // État du formulaire multi-étapes
   const [currentStep, setCurrentStep] = useState<CurrentStep>(1);
 
@@ -41,11 +45,28 @@ export function CandidatureForm() {
   // Ref du formulaire pour avoir accès au FormData
   const formRef = useRef<HTMLFormElement>(null);
 
-  // État de la Server Action
-  const [actionState, formAction, isPending] = useActionState<
-    ActionState,
-    FormData
-  >(submitCandidature, {});
+  const { showToast } = useToast();
+  const router = useRouter();
+
+  /**
+   * La Server Action est appelée directement plutôt que via `useActionState` :
+   * on dispose ainsi du code de suivi dans le gestionnaire d'événement, ce qui
+   * permet d'enchaîner écriture du relais et redirection sans passer par un
+   * effet réagissant à l'état de retour.
+   */
+  const [isPending, startTransition] = useTransition();
+  // "sent" survit à l'attente de la redirection : le formulaire ne doit pas
+  // réapparaître entre la fin de l'action et l'arrivée sur la confirmation.
+  const [phase, setPhase] = useState<"idle" | "sent">("idle");
+  // Repli si sessionStorage est indisponible : la confirmation reste affichée
+  // ici plutôt que de rebondir sur une page qui renverrait au formulaire.
+  const [showInlineConfirmation, setShowInlineConfirmation] = useState(false);
+
+  // La page de confirmation est préchargée pendant que le candidat remplit le
+  // formulaire : à l'envoi, la transition est immédiate.
+  useEffect(() => {
+    router.prefetch("/candidature/confirmation");
+  }, [router]);
 
   // Gestion du changement de champ (étape 1)
   const handleStep1Change = (field: keyof Step1InfosInput, value: string) => {
@@ -118,15 +139,26 @@ export function CandidatureForm() {
     return true;
   };
 
-  // Validation de l'étape 3 (documents)
-  const validateStep3 = (): boolean => {
+  // Validation de l'étape 3 : le dossier doit être complet pour le type de
+  // stage choisi (cf. Annexe A du cahier des charges), pas seulement non vide.
+  const missingDocuments = ((): string[] => {
     const internshipType = step2Data.internshipType as InternshipType | undefined;
-    if (!internshipType) {
-      return false;
-    }
-    // La validation des documents est faite côté composant StepDocuments
-    // Ici on ne fait qu'une vérification basique
-    return uploadedFiles.size > 0;
+    if (!internshipType) return [];
+    return REQUIRED_DOCUMENTS[internshipType].filter(
+      (label) => !uploadedFiles.has(label)
+    );
+  })();
+
+  const isDossierComplete =
+    !!step2Data.internshipType && missingDocuments.length === 0;
+
+  const validateStep3 = (): boolean => {
+    if (isDossierComplete) return true;
+    showToast({
+      type: "error",
+      message: `Dossier incomplet : ${missingDocuments.length} document(s) manquant(s).`,
+    });
+    return false;
   };
 
   // Navigation
@@ -147,10 +179,13 @@ export function CandidatureForm() {
   };
 
   // Gestion de la soumission du formulaire (étape 4)
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!formRef.current) return;
+    // Chaque envoi crée un dossier distinct côté serveur, et l'attente des
+    // uploads incite à recliquer : on verrouille jusqu'au retour de l'action.
+    if (isPending || phase === "sent") return;
 
     // Créer un FormData avec les données de toutes les étapes
     const formData = new FormData(formRef.current);
@@ -174,38 +209,51 @@ export function CandidatureForm() {
       formData.append(key, file);
     });
 
-    // Appeler l'action serveur
-    await formAction(formData);
+    if (offerId) {
+      formData.set("offerId", offerId);
+    }
+
+    startTransition(async () => {
+      const result = await submitCandidature({}, formData);
+
+      // Le code de suivi renvoyé par l'action n'est plus lu ici : il ne part
+      // que par email. On ne teste donc que l'issue de l'envoi.
+      if (result.error || !result.success) {
+        // L'échec rouvre le bouton : le candidat doit pouvoir réessayer.
+        showToast({
+          type: "error",
+          message: result.error ?? "Erreur serveur. Veuillez réessayer.",
+        });
+        return;
+      }
+
+      setPhase("sent");
+
+      const stored = writeConfirmationHandoff({
+        submitted: true,
+        email: step1Data.email,
+      });
+
+      if (!stored) {
+        setShowInlineConfirmation(true);
+        return;
+      }
+
+      // On quitte /candidature pour une page dédiée : un F5 ou un retour
+      // arrière ne retombe alors jamais sur le formulaire encore rempli.
+      router.replace("/candidature/confirmation");
+    });
   };
 
-  // Si succès, afficher l'écran de confirmation
-  if (actionState.success && actionState.trackingCode) {
-    return (
-      <SuccessScreen
-        trackingCode={actionState.trackingCode}
-        email={step1Data.email}
-      />
-    );
+  // sessionStorage indisponible : la confirmation reste affichée sur place.
+  if (showInlineConfirmation) {
+    return <SuccessScreen email={step1Data.email} />;
   }
 
-  // Si erreur, afficher le message
-  if (actionState.error && !isPending) {
-    return (
-      <div className="alert alert-error mb-6">
-        <AlertCircle className="w-6 h-6 shrink-0" aria-hidden="true" />
-        <span>{actionState.error}</span>
-      </div>
-    );
-  }
-
-  // Écran de chargement
-  if (isPending) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-        <p className="text-base-content/60">Envoi de votre candidature...</p>
-      </div>
-    );
+  // On garde le squelette jusqu'à ce que la redirection ait effectivement lieu :
+  // sans cela, le formulaire réapparaîtrait brièvement après un envoi réussi.
+  if (isPending || phase === "sent") {
+    return <CandidatureFormSkeleton />;
   }
 
   return (
@@ -337,7 +385,7 @@ export function CandidatureForm() {
         ) : (
           <button
             type="submit"
-            disabled={uploadedFiles.size === 0 || isPending}
+            disabled={!isDossierComplete || isPending}
             className="btn btn-success flex-1 gap-2"
           >
             <Send className="w-4 h-4" aria-hidden="true" />

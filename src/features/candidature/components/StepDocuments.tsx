@@ -25,7 +25,7 @@ export function StepDocuments({
       <div className="alert alert-warning">
         <AlertTriangle className="w-5 h-5 shrink-0" aria-hidden="true" />
         <span>
-          Veuillez d'abord sélectionner un type de stage à l'étape précédente.
+          Veuillez d&apos;abord sélectionner un type de stage à l&apos;étape précédente.
         </span>
       </div>
     );

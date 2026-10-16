@@ -2,11 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/shared/db/prisma";
-import { uploadDocument } from "@/shared/storage/supabase";
+import {
+  deleteStoragePaths,
+  moveDocument,
+  uploadDocument,
+} from "@/shared/storage/supabase";
 import { validatePdf } from "@/shared/validation/file";
 import { REQUIRED_DOCUMENTS } from "@/shared/constants/domain";
+import {
+  TRACKING_CODE_ALPHABET,
+  TRACKING_CODE_LENGTH,
+} from "@/shared/tracking/tracking-code";
 import { completeApplicationSchema } from "./schema";
-import { notifySubmission } from "@/features/notifications/actions/send-notification";
+import { notifySubmission } from "@/features/notifications/send-notification";
 import { randomBytes } from "crypto";
 import type { InternshipType } from "@prisma/client";
 
@@ -23,10 +31,43 @@ export type ActionState = {
 
 /**
  * Génère un code de suivi aléatoire et non devinable.
- * Format : 8 caractères alphanumériques en majuscules (ex: A7B2K9M1)
+ * 16 caractères tirés d'un alphabet de 32, soit 80 bits d'entropie.
+ *
+ * `octet % 32` est uniforme car 256 est un multiple de 32 : aucun caractère
+ * n'est favorisé, contrairement à un modulo sur un alphabet de taille
+ * quelconque.
  */
 function generateTrackingCode(): string {
-  return randomBytes(4).toString("hex").toUpperCase().substring(0, 8);
+  const bytes = randomBytes(TRACKING_CODE_LENGTH);
+  let code = "";
+  for (const byte of bytes) {
+    code += TRACKING_CODE_ALPHABET[byte % TRACKING_CODE_ALPHABET.length];
+  }
+  return code;
+}
+
+function validateDocumentSet(
+  internshipType: InternshipType,
+  labels: string[]
+): string | null {
+  const requiredDocs = REQUIRED_DOCUMENTS[internshipType];
+  const requiredSet = new Set(requiredDocs);
+
+  const missing = requiredDocs.filter((doc) => !labels.includes(doc));
+  if (missing.length > 0) {
+    return `Documents manquants pour ce type de stage : ${missing.join(", ")}.`;
+  }
+
+  const unexpected = labels.filter((label) => !requiredSet.has(label));
+  if (unexpected.length > 0) {
+    return `Documents non requis pour ce type de stage : ${[...new Set(unexpected)].join(", ")}.`;
+  }
+
+  if (labels.length !== requiredDocs.length) {
+    return "Le nombre de documents fournis ne correspond pas au dossier requis.";
+  }
+
+  return null;
 }
 
 /**
@@ -49,6 +90,8 @@ export async function submitCandidature(
       email: formData.get("email"),
       phone: formData.get("phone"),
       lieudit: formData.get("lieudit"),
+      latitude: formData.get("latitude"),
+      longitude: formData.get("longitude"),
       relativePhone1: formData.get("relativePhone1"),
       relativePhone2: formData.get("relativePhone2"),
       school: formData.get("school"),
@@ -58,6 +101,7 @@ export async function submitCandidature(
       duration: formData.get("duration"),
       startDate: formData.get("startDate"),
       reportRequired: formData.get("reportRequired") === "true",
+      offerId: formData.get("offerId") || undefined,
     });
 
     if (!parsed.success) {
@@ -67,6 +111,15 @@ export async function submitCandidature(
 
     const data = parsed.data;
     const internshipType = data.internshipType as InternshipType;
+
+    if (data.offerId) {
+      const offer = await prisma.internshipOffer.findFirst({
+        where: { id: data.offerId, isPublished: true },
+      });
+      if (!offer) {
+        return { error: "L'offre sélectionnée est introuvable." };
+      }
+    }
 
     // ===== 2. Récupérer les fichiers du FormData (PDF only, 2 Mo max) =====
     const files: { label: string; file: File }[] = [];
@@ -83,40 +136,39 @@ export async function submitCandidature(
       }
     }
 
-    // ===== 3. Vérifier la COMPOSITION du dossier selon le type (serveur) =====
-    const requiredDocs = REQUIRED_DOCUMENTS[internshipType];
-    const providedLabels = new Set(files.map((f) => f.label));
-    const missing = requiredDocs.filter((doc) => !providedLabels.has(doc));
-    if (missing.length > 0) {
-      return {
-        error: `Documents manquants pour ce type de stage : ${missing.join(", ")}.`,
-      };
+    const documentError = validateDocumentSet(
+      internshipType,
+      files.map((f) => f.label)
+    );
+    if (documentError) {
+      return { error: documentError };
     }
 
-    // ===== 4. Upload des fichiers sur Supabase, classés par date + dossier =====
-    // Arborescence : candidatures/{année}/{mois}/{code de suivi}/{libellé}.pdf
-    // → facile à parcourir, et à purger par période (RGPD, 6 mois).
-    const trackingCode = generateTrackingCode();
-    const now = new Date();
-    const datePrefix = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const folderPath = `candidatures/${datePrefix}/${trackingCode}`;
+    const uploadSessionId = randomBytes(16).toString("hex");
+    const tempFolder = `temp/${uploadSessionId}`;
+    const stagedFiles: { label: string; storagePath: string }[] = [];
 
-    const uploadedDocuments: { label: string; url: string }[] = [];
     try {
       for (const { label, file } of files) {
-        const url = await uploadDocument(file, folderPath, label);
-        uploadedDocuments.push({ label, url });
+        const uploaded = await uploadDocument(file, tempFolder, label);
+        stagedFiles.push({ label, storagePath: uploaded.storagePath });
       }
     } catch (uploadError) {
+      await deleteStoragePaths(stagedFiles.map((f) => f.storagePath));
       console.error("[candidature] Upload error:", uploadError);
       return { error: "Erreur lors de l'upload d'un fichier. Veuillez réessayer." };
     }
 
-    // ===== 5. Créer profil + demande + documents en une TRANSACTION =====
+    const trackingCode = generateTrackingCode();
     const startDate = new Date(data.startDate);
+    const now = new Date();
+    const datePrefix = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    let requestId: string;
+    let profileId: string;
 
     try {
-      await prisma.$transaction(async (tx) => {
+      const created = await prisma.$transaction(async (tx) => {
         const profile = await tx.profile.create({
           data: {
             firstName: data.firstName,
@@ -124,6 +176,8 @@ export async function submitCandidature(
             email: data.email,
             phone: data.phone,
             lieudit: data.lieudit,
+            latitude: data.latitude,
+            longitude: data.longitude,
             relativePhone1: data.relativePhone1,
             relativePhone2: data.relativePhone2,
             school: data.school,
@@ -141,19 +195,63 @@ export async function submitCandidature(
             reportRequired: data.reportRequired,
             status: "PENDING",
             profileId: profile.id,
+            offerId: data.offerId,
           },
         });
 
-        await tx.document.createMany({
-          data: uploadedDocuments.map((doc) => ({
-            label: doc.label,
-            url: doc.url,
-            requestId: internshipRequest.id,
-          })),
-        });
+        return { requestId: internshipRequest.id, profileId: profile.id };
       });
+
+      requestId = created.requestId;
+      profileId = created.profileId;
     } catch (dbError) {
+      await deleteStoragePaths(stagedFiles.map((f) => f.storagePath));
       console.error("[candidature] Erreur base de données:", dbError);
+      return {
+        error:
+          "Une erreur est survenue lors de la création de votre demande. Veuillez réessayer.",
+      };
+    }
+
+    const finalFolder = `candidatures/${datePrefix}/${requestId}`;
+    const pendingPaths = stagedFiles.map((f) => f.storagePath);
+    const finalizedPaths: string[] = [];
+
+    try {
+      const uploadedDocuments: {
+        label: string;
+        url: string;
+        storagePath: string;
+      }[] = [];
+
+      for (const staged of stagedFiles) {
+        const moved = await moveDocument(staged.storagePath, finalFolder);
+        const pendingIndex = pendingPaths.indexOf(staged.storagePath);
+        if (pendingIndex !== -1) pendingPaths.splice(pendingIndex, 1);
+        finalizedPaths.push(moved.storagePath);
+        uploadedDocuments.push({
+          label: staged.label,
+          url: moved.signedUrl,
+          storagePath: moved.storagePath,
+        });
+      }
+
+      await prisma.document.createMany({
+        data: uploadedDocuments.map((doc) => ({
+          label: doc.label,
+          url: doc.url,
+          storagePath: doc.storagePath,
+          requestId,
+        })),
+      });
+    } catch (finalizeError) {
+      await deleteStoragePaths([...pendingPaths, ...finalizedPaths]);
+      try {
+        await prisma.profile.delete({ where: { id: profileId } });
+      } catch (rollbackError) {
+        console.error("[candidature] Échec du rollback:", rollbackError);
+      }
+      console.error("[candidature] Erreur finalisation:", finalizeError);
       return {
         error:
           "Une erreur est survenue lors de la création de votre demande. Veuillez réessayer.",

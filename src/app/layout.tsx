@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
+import { ToastProvider } from "@/shared/ui/ToastProvider";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -21,7 +22,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" data-theme="bridge" className={`${montserrat.variable} h-full`}>
-      <body className="min-h-full bg-base-200 antialiased">{children}</body>
+      <body className="min-h-full bg-base-200 antialiased">
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }

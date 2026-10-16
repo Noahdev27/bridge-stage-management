@@ -8,6 +8,16 @@ export const MAX_FILE_SIZE = 2 * 1024 * 1024;
 /** Seul format de document accepté. */
 export const ACCEPTED_MIME = "application/pdf";
 
+/**
+ * Griffes apposées sur l'attestation (signature, cachet).
+ * Le PNG à fond transparent est le format attendu : posé sur le document, un
+ * JPEG opaque masquerait le texte qu'il recouvre.
+ */
+export const ACCEPTED_IMAGE_MIMES = ["image/png", "image/jpeg", "image/webp"];
+
+/** Taille maximale d'une griffe : 1 Mo (elle est inlinée dans le document). */
+export const MAX_IMAGE_SIZE = 1024 * 1024;
+
 /** Libellés FR des statuts (pour l'affichage candidat et back-office). */
 export const STATUS_LABELS: Record<RequestStatus, string> = {
   PENDING: "En attente",
@@ -56,4 +66,29 @@ export const REQUIRED_DOCUMENTS: Record<InternshipType, string[]> = {
 export const MIN_DURATION_MONTHS: Record<InternshipType, number> = {
   ACADEMIC: 1,
   PROFESSIONAL: 3,
+};
+
+/** Seuil d'alerte RH : dossiers en attente dont la date de début arrive sous X jours. */
+export const START_DATE_ALERT_DAYS = 15;
+
+/** Rétention RGPD : dossiers rejetés à purger après X mois. */
+export const REJECTED_PURGE_MONTHS = 6;
+
+export const DEPARTMENT_LABELS: Record<
+  "DEVELOPMENT" | "DESIGN" | "MARKETING" | "NETWORK" | "DATA" | "OTHER",
+  string
+> = {
+  DEVELOPMENT: "Développement",
+  DESIGN: "Design",
+  MARKETING: "Marketing",
+  NETWORK: "Réseaux / Infrastructure",
+  DATA: "Data",
+  OTHER: "Autre",
+};
+
+export const ROLE_LABELS: Record<"ADMIN" | "RH" | "TUTOR" | "CANDIDATE", string> = {
+  ADMIN: "Administrateur",
+  RH: "Ressources humaines",
+  TUTOR: "Tuteur",
+  CANDIDATE: "Candidat",
 };

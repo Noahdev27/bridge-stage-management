@@ -13,8 +13,24 @@ function isValidInternationalPhone(value: string) {
   return phoneNumber?.isValid() ?? false;
 }
 
+/**
+ * Chaîne obligatoire.
+ *
+ * Le message métier est aussi attaché au contrôle de *type*, pas seulement à
+ * `.min(1)`. Sans cela, un champ jamais saisi vaut `undefined` côté client
+ * (l'état du formulaire part de `{}`) et `null` côté serveur (`FormData.get`
+ * d'une clé absente) : le contrôle de type échoue avant `.min(1)` et Zod
+ * affiche son message anglais par défaut au candidat.
+ */
+function requiredText(message: string, max: number, maxMessage: string) {
+  return z
+    .string({ error: message })
+    .min(1, message)
+    .max(max, maxMessage);
+}
+
 const internationalPhoneSchema = z
-  .string()
+  .string({ error: "Le numéro de téléphone est requis." })
   .min(1, "Le numéro de téléphone est requis.")
   .refine((value) => value.trim().startsWith("+"), {
     message: "Le numéro doit commencer par l'indicatif international, ex. +237.",
@@ -24,29 +40,53 @@ const internationalPhoneSchema = z
       "Le numéro doit être un numéro international valide avec un indicatif pays.",
   });
 
+function gpsCoordinateSchema(min: number, max: number, label: string) {
+  return z
+    .union([z.string(), z.number()], { error: `La ${label} est requise.` })
+    .refine(
+      (value) => value !== "" && value !== null && value !== undefined,
+      { message: `La ${label} est requise.` }
+    )
+    .transform((value) =>
+      typeof value === "string" ? Number(value.replace(",", ".")) : value
+    )
+    .pipe(
+      z
+        .number()
+        .refine((value) => !Number.isNaN(value), "Coordonnée invalide.")
+        .refine(
+          (value) => value >= min && value <= max,
+          `La ${label} doit être comprise entre ${min} et ${max}.`
+        )
+    );
+}
+
 // ===== ÉTAPE 1 : Informations personnelles =====
 export const step1InfosSchema = z.object({
-  firstName: z
-    .string()
-    .min(1, "Le prénom est requis.")
-    .max(100, "Le prénom ne doit pas dépasser 100 caractères."),
-  lastName: z
-    .string()
-    .min(1, "Le nom est requis.")
-    .max(100, "Le nom ne doit pas dépasser 100 caractères."),
+  firstName: requiredText(
+    "Le prénom est requis.",
+    100,
+    "Le prénom ne doit pas dépasser 100 caractères."
+  ),
+  lastName: requiredText(
+    "Le nom est requis.",
+    100,
+    "Le nom ne doit pas dépasser 100 caractères."
+  ),
   email: z
-    .string()
+    .string({ error: "L'email est requis." })
     .min(1, "L'email est requis.")
     .email("Veuillez entrer une adresse email valide.")
-    .max(255),
+    .max(255, "L'email ne doit pas dépasser 255 caractères."),
   // Téléphone du candidat
   phone: internationalPhoneSchema,
-  // Domicile : lieu-dit (la localisation GPS est fournie via le document
-  // « Plan de localisation » à l'étape Documents).
-  lieudit: z
-    .string()
-    .min(1, "Le lieu-dit (domicile) est requis.")
-    .max(255),
+  lieudit: requiredText(
+    "Le lieu-dit (domicile) est requis.",
+    255,
+    "Le lieu-dit ne doit pas dépasser 255 caractères."
+  ),
+  latitude: gpsCoordinateSchema(-90, 90, "latitude"),
+  longitude: gpsCoordinateSchema(-180, 180, "longitude"),
   // Téléphones de deux proches du candidat
   relativePhone1: internationalPhoneSchema,
   relativePhone2: internationalPhoneSchema,
@@ -56,27 +96,31 @@ export type Step1InfosInput = z.infer<typeof step1InfosSchema>;
 
 // ===== ÉTAPE 2 : Parcours académique et paramètres du stage =====
 export const step2ParcoursSchema = z.object({
-  school: z
-    .string()
-    .min(1, "L'école/université est requise.")
-    .max(255),
-  field: z
-    .string()
-    .min(1, "La filière est requise.")
-    .max(255),
-  level: z
-    .string()
-    .min(1, "Le niveau d'étude est requis.")
-    .max(100),
+  school: requiredText(
+    "L'école/université est requise.",
+    255,
+    "Le nom de l'établissement ne doit pas dépasser 255 caractères."
+  ),
+  field: requiredText(
+    "La filière est requise.",
+    255,
+    "La filière ne doit pas dépasser 255 caractères."
+  ),
+  level: requiredText(
+    "Le niveau d'étude est requis.",
+    100,
+    "Le niveau d'étude ne doit pas dépasser 100 caractères."
+  ),
   internshipType: z.nativeEnum(InternshipType, {
     message: "Sélectionnez un type de stage valide.",
   }),
   duration: z
-    .string()
+    .string({ error: "La durée est requise." })
     .min(1, "La durée est requise.")
     .regex(/^\d+$/, "La durée doit être un nombre de mois."),
   startDate: z
-    .string()
+    .string({ error: "La date de début souhaitée est requise." })
+    .min(1, "La date de début souhaitée est requise.")
     .refine(
       (date) => {
         const d = new Date(date);
@@ -89,6 +133,7 @@ export const step2ParcoursSchema = z.object({
       "La date de début doit être dans le futur."
     ),
   reportRequired: z.boolean().default(false),
+  offerId: z.string().min(1).optional(),
 }).superRefine((data, ctx) => {
   const duration = Number(data.duration);
   const minDuration = MIN_DURATION_MONTHS[data.internshipType];
