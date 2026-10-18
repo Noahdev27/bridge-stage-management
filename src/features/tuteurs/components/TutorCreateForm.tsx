@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { useToast } from "@/shared/ui/ToastProvider";
+import { FormField } from "@/shared/ui/FormField";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 import { createTutor, type TutorActionState } from "../actions";
 
 export function TutorCreateForm() {
@@ -49,9 +51,9 @@ export function TutorCreateForm() {
         className="card bg-base-100 border border-base-300 shadow-sm"
       >
         <div className="card-body p-5 gap-4">
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">
+          <label className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">
                 Nom complet <span className="text-error">*</span>
               </span>
             </span>
@@ -59,22 +61,22 @@ export function TutorCreateForm() {
               type="text"
               name="name"
               placeholder="Ex : Jean Ngoumou"
-              className={`input input-bordered ${
+              className={`input w-full ${
                 fieldErrors.name ? "input-error" : ""
               }`}
               maxLength={100}
               required
             />
             {fieldErrors.name && (
-              <span className="label-text-alt text-error mt-1">
+              <span className="text-xs text-error mt-1">
                 {fieldErrors.name}
               </span>
             )}
           </label>
 
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">
+          <label className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">
                 Email <span className="text-error">*</span>
               </span>
             </span>
@@ -82,48 +84,38 @@ export function TutorCreateForm() {
               type="email"
               name="email"
               placeholder="tuteur@bridge.cm"
-              className={`input input-bordered ${
+              className={`input w-full ${
                 fieldErrors.email ? "input-error" : ""
               }`}
               maxLength={255}
               required
             />
             {fieldErrors.email && (
-              <span className="label-text-alt text-error mt-1">
+              <span className="text-xs text-error mt-1">
                 {fieldErrors.email}
               </span>
             )}
           </label>
 
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">
-                Mot de passe initial <span className="text-error">*</span>
-              </span>
-            </span>
-            <input
-              type="password"
-              name="password"
-              placeholder="Au moins 8 caractères"
-              className={`input input-bordered ${
-                fieldErrors.password ? "input-error" : ""
-              }`}
-              minLength={8}
-              maxLength={128}
-              autoComplete="new-password"
-              required
-            />
-            {fieldErrors.password ? (
-              <span className="label-text-alt text-error mt-1">
-                {fieldErrors.password}
-              </span>
-            ) : (
-              <span className="label-text-alt text-base-content/50 mt-1">
-                À communiquer au tuteur. Il pourra le changer depuis son espace
-                Paramètres.
-              </span>
+          <FormField
+            label="Mot de passe initial"
+            required
+            error={fieldErrors.password}
+            hint="À communiquer au tuteur. Il pourra le changer depuis son espace Paramètres."
+          >
+            {(control) => (
+              <PasswordInput
+                {...control}
+                name="password"
+                placeholder="Au moins 8 caractères"
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={128}
+                invalid={!!fieldErrors.password}
+                required
+              />
             )}
-          </label>
+          </FormField>
 
           {state.error && (
             <div className="alert alert-error text-sm py-2">

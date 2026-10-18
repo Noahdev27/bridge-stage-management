@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { loginCandidate } from "../actions";
 import { useToast } from "@/shared/ui/ToastProvider";
+import { FormField } from "@/shared/ui/FormField";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 
 export function CandidateLoginForm() {
   const { showToast } = useToast();
@@ -31,20 +33,24 @@ export function CandidateLoginForm() {
         <p className="text-sm text-base-content/60">
           Connectez-vous pour retrouver vos dossiers liés à votre email.
         </p>
-        <input
-          name="email"
-          type="email"
-          className="input input-bordered"
-          placeholder="Email"
-          required
-        />
-        <input
-          name="password"
-          type="password"
-          className="input input-bordered"
-          placeholder="Mot de passe"
-          required
-        />
+        <FormField label="Email">
+          {(control) => (
+            <input
+              {...control}
+              name="email"
+              type="email"
+              autoComplete="email"
+              className="input w-full"
+              placeholder="vous@exemple.com"
+              required
+            />
+          )}
+        </FormField>
+        <FormField label="Mot de passe">
+          {(control) => (
+            <PasswordInput {...control} name="password" required />
+          )}
+        </FormField>
         <button type="submit" className="btn btn-primary" disabled={isPending}>
           {isPending ? "Connexion…" : "Se connecter"}
         </button>

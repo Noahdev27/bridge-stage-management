@@ -46,12 +46,12 @@ export function TutorAssignForm({
           <UserCheck className="w-5 h-5 text-primary" aria-hidden="true" />
           <h2 className="card-title text-lg">Tuteur</h2>
         </div>
-        <label className="form-control">
-          <span className="label py-1">
-            <span className="label-text font-semibold">Assigner un tuteur</span>
+        <label className="flex flex-col gap-1.5">
+          <span className="flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-base-content">Assigner un tuteur</span>
           </span>
           <select
-            className="select select-bordered select-sm"
+            className="select w-full select-sm"
             defaultValue={currentTutorId ?? ""}
             disabled={isPending || tutors.length === 0}
             onChange={(e) => handleChange(e.target.value)}

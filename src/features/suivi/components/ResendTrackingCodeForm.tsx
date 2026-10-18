@@ -67,7 +67,7 @@ export function ResendTrackingCodeForm() {
       <input
         name="email"
         type="email"
-        className="input input-bordered input-sm w-full"
+        className="input w-full input-sm"
         placeholder="Email"
         autoComplete="email"
         required

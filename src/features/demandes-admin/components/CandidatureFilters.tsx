@@ -64,7 +64,7 @@ export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) 
 
   return (
     <div className="space-y-4 mb-6">
-      <div className="tabs tabs-boxed inline-flex bg-base-200 p-1">
+      <div className="tabs tabs-box inline-flex bg-base-200 p-1">
         {STATUS_FILTERS.map((filter) => (
           <button
             key={filter.value}
@@ -91,12 +91,12 @@ export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) 
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            <label className="form-control">
-              <span className="label py-1">
-                <span className="label-text font-semibold">Type de stage</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-base-content">Type de stage</span>
               </span>
               <select
-                className="select select-bordered select-sm w-full"
+                className="select w-full select-sm"
                 value={currentType}
                 onChange={(e) => pushParams({ type: e.target.value || null })}
               >
@@ -108,12 +108,12 @@ export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) 
               </select>
             </label>
 
-            <label className="form-control">
-              <span className="label py-1">
-                <span className="label-text font-semibold">Tuteur</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-base-content">Tuteur</span>
               </span>
               <select
-                className="select select-bordered select-sm w-full"
+                className="select w-full select-sm"
                 value={currentTutorId}
                 onChange={(e) => pushParams({ tutorId: e.target.value || null })}
               >
@@ -126,12 +126,12 @@ export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) 
               </select>
             </label>
 
-            <label className="form-control">
-              <span className="label py-1">
-                <span className="label-text font-semibold">Rapport à produire</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-base-content">Rapport à produire</span>
               </span>
               <select
-                className="select select-bordered select-sm w-full"
+                className="select w-full select-sm"
                 value={currentReport}
                 onChange={(e) =>
                   pushParams({ reportRequired: e.target.value || null })
@@ -150,24 +150,24 @@ export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) 
               }}
               className="grid grid-cols-2 gap-2 items-end xl:col-span-1 md:col-span-2"
             >
-              <label className="form-control">
-                <span className="label py-1">
-                  <span className="label-text font-semibold">Du</span>
+              <label className="flex flex-col gap-1.5">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-base-content">Du</span>
                 </span>
                 <input
                   type="date"
-                  className="input input-bordered input-sm w-full"
+                  className="input w-full input-sm"
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
                 />
               </label>
-              <label className="form-control">
-                <span className="label py-1">
-                  <span className="label-text font-semibold">Au</span>
+              <label className="flex flex-col gap-1.5">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-base-content">Au</span>
                 </span>
                 <input
                   type="date"
-                  className="input input-bordered input-sm w-full"
+                  className="input w-full input-sm"
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
                 />

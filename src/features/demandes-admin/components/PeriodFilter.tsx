@@ -45,12 +45,12 @@ export function PeriodFilter({
 
   return (
     <div className="flex flex-col sm:flex-row gap-3">
-      <label className="form-control w-full sm:w-40">
-        <span className="label py-1">
-          <span className="label-text font-semibold">Année</span>
+      <label className="flex flex-col gap-1.5 w-full sm:w-40">
+        <span className="flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-base-content">Année</span>
         </span>
         <select
-          className="select select-bordered select-sm w-full"
+          className="select w-full select-sm"
           value={String(selectedYear)}
           onChange={(e) =>
             updatePeriod(e.target.value, selectedMonth ? String(selectedMonth) : "")
@@ -65,12 +65,12 @@ export function PeriodFilter({
         </select>
       </label>
 
-      <label className="form-control w-full sm:w-48">
-        <span className="label py-1">
-          <span className="label-text font-semibold">Mois</span>
+      <label className="flex flex-col gap-1.5 w-full sm:w-48">
+        <span className="flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-base-content">Mois</span>
         </span>
         <select
-          className="select select-bordered select-sm w-full"
+          className="select w-full select-sm"
           value={selectedMonth ? String(selectedMonth) : ""}
           onChange={(e) => updatePeriod(String(selectedYear), e.target.value)}
           aria-label="Filtrer par mois"

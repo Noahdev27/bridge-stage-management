@@ -5,6 +5,8 @@ import Link from "next/link";
 import { CircleCheck } from "lucide-react";
 import { resetPassword, type CandidateActionState } from "../actions";
 import { useToast } from "@/shared/ui/ToastProvider";
+import { FormField } from "@/shared/ui/FormField";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 
 export function ResetPasswordForm({ token }: { token: string }) {
   const { showToast } = useToast();
@@ -59,24 +61,28 @@ export function ResetPasswordForm({ token }: { token: string }) {
             dispose d'aucune session pour le retrouver à la soumission. */}
         <input type="hidden" name="token" value={token} />
 
-        <input
-          name="password"
-          type="password"
-          className="input input-bordered"
-          placeholder="Nouveau mot de passe"
-          autoComplete="new-password"
-          minLength={8}
-          required
-        />
-        <input
-          name="confirmPassword"
-          type="password"
-          className="input input-bordered"
-          placeholder="Confirmez le mot de passe"
-          autoComplete="new-password"
-          minLength={8}
-          required
-        />
+        <FormField label="Nouveau mot de passe">
+          {(control) => (
+            <PasswordInput
+              {...control}
+              name="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          )}
+        </FormField>
+        <FormField label="Confirmez le mot de passe">
+          {(control) => (
+            <PasswordInput
+              {...control}
+              name="confirmPassword"
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          )}
+        </FormField>
         <button type="submit" className="btn btn-primary" disabled={isPending}>
           {isPending ? "Enregistrement…" : "Enregistrer"}
         </button>

@@ -59,9 +59,9 @@ export function AttestationPanel({
             </p>
 
             <form action={formAction} className="space-y-3">
-              <label className="form-control">
-                <span className="label py-1">
-                  <span className="label-text font-semibold">Début du stage</span>
+              <label className="flex flex-col gap-1.5">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-base-content">Début du stage</span>
                 </span>
                 <input
                   type="date"
@@ -69,13 +69,13 @@ export function AttestationPanel({
                   required
                   value={start}
                   onChange={(e) => setStart(e.target.value)}
-                  className="input input-bordered input-sm w-full"
+                  className="input w-full input-sm"
                 />
               </label>
 
-              <label className="form-control">
-                <span className="label py-1">
-                  <span className="label-text font-semibold">
+              <label className="flex flex-col gap-1.5">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-base-content">
                     Fin du stage <span className="text-error">*</span>
                   </span>
                 </span>
@@ -85,7 +85,7 @@ export function AttestationPanel({
                   required
                   value={end}
                   onChange={(e) => setEnd(e.target.value)}
-                  className="input input-bordered input-sm w-full"
+                  className="input w-full input-sm"
                 />
               </label>
 

@@ -79,9 +79,9 @@ export function OfferForm({ mode, offer }: OfferFormProps) {
         className="card bg-base-100 border border-base-300 shadow-sm"
       >
         <div className="card-body p-5 gap-4">
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">
+          <label className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">
                 Titre <span className="text-error">*</span>
               </span>
             </span>
@@ -90,30 +90,30 @@ export function OfferForm({ mode, offer }: OfferFormProps) {
               name="title"
               defaultValue={offer?.title ?? ""}
               placeholder="Ex : Stage développeur back-end Node.js"
-              className={`input input-bordered ${
+              className={`input w-full ${
                 fieldErrors.title ? "input-error" : ""
               }`}
               maxLength={150}
               required
             />
             {fieldErrors.title && (
-              <span className="label-text-alt text-error mt-1">
+              <span className="text-xs text-error mt-1">
                 {fieldErrors.title}
               </span>
             )}
           </label>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="form-control">
-              <span className="label py-1">
-                <span className="label-text font-semibold">
+            <label className="flex flex-col gap-1.5">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-base-content">
                   Département <span className="text-error">*</span>
                 </span>
               </span>
               <select
                 name="department"
                 defaultValue={offer?.department ?? ""}
-                className={`select select-bordered ${
+                className={`select w-full ${
                   fieldErrors.department ? "select-error" : ""
                 }`}
                 required
@@ -128,22 +128,22 @@ export function OfferForm({ mode, offer }: OfferFormProps) {
                 ))}
               </select>
               {fieldErrors.department && (
-                <span className="label-text-alt text-error mt-1">
+                <span className="text-xs text-error mt-1">
                   {fieldErrors.department}
                 </span>
               )}
             </label>
 
-            <label className="form-control">
-              <span className="label py-1">
-                <span className="label-text font-semibold">
+            <label className="flex flex-col gap-1.5">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-base-content">
                   Type de stage <span className="text-error">*</span>
                 </span>
               </span>
               <select
                 name="type"
                 defaultValue={offer?.type ?? ""}
-                className={`select select-bordered ${
+                className={`select w-full ${
                   fieldErrors.type ? "select-error" : ""
                 }`}
                 required
@@ -158,16 +158,16 @@ export function OfferForm({ mode, offer }: OfferFormProps) {
                 ))}
               </select>
               {fieldErrors.type && (
-                <span className="label-text-alt text-error mt-1">
+                <span className="text-xs text-error mt-1">
                   {fieldErrors.type}
                 </span>
               )}
             </label>
           </div>
 
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">
+          <label className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">
                 Durée minimale (mois) <span className="text-error">*</span>
               </span>
             </span>
@@ -179,21 +179,21 @@ export function OfferForm({ mode, offer }: OfferFormProps) {
               max={24}
               step={1}
               placeholder="Ex : 3"
-              className={`input input-bordered ${
+              className={`input w-full ${
                 fieldErrors.durationMonths ? "input-error" : ""
               }`}
               required
             />
             {fieldErrors.durationMonths && (
-              <span className="label-text-alt text-error mt-1">
+              <span className="text-xs text-error mt-1">
                 {fieldErrors.durationMonths}
               </span>
             )}
           </label>
 
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">
+          <label className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">
                 Description <span className="text-error">*</span>
               </span>
             </span>
@@ -201,27 +201,27 @@ export function OfferForm({ mode, offer }: OfferFormProps) {
               name="description"
               defaultValue={offer?.description ?? ""}
               placeholder="Missions, compétences attendues, environnement…"
-              className={`textarea textarea-bordered min-h-40 ${
+              className={`textarea w-full min-h-40 ${
                 fieldErrors.description ? "textarea-error" : ""
               }`}
               maxLength={4000}
               required
             />
             {fieldErrors.description && (
-              <span className="label-text-alt text-error mt-1">
+              <span className="text-xs text-error mt-1">
                 {fieldErrors.description}
               </span>
             )}
           </label>
 
-          <label className="label cursor-pointer justify-start gap-3 py-2">
+          <label className="flex items-center cursor-pointer justify-start gap-3 py-2">
             <input
               type="checkbox"
               name="isPublished"
               defaultChecked={offer?.isPublished ?? true}
               className="checkbox checkbox-primary"
             />
-            <span className="label-text font-medium">
+            <span className="text-sm font-medium text-base-content">
               Publier immédiatement l&apos;offre (visible dans l&apos;espace
               candidat)
             </span>

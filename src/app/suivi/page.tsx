@@ -112,8 +112,8 @@ export default function SuiviPage() {
         <div className="card bg-base-100 shadow-xl border border-base-300">
           <div className="card-body p-6">
             <form action={formAction} className="space-y-4">
-              <div className="form-control">
-                <label className="label font-medium text-xs uppercase tracking-wider text-base-content/70">
+              <div className="flex flex-col gap-1.5">
+                <label className="block font-medium text-xs uppercase tracking-wider text-base-content/70">
                   Code de suivi
                 </label>
                 <div className="join w-full mt-1">
@@ -124,7 +124,7 @@ export default function SuiviPage() {
                     // 16 caractères + 3 tirets si le code est collé formaté.
                     maxLength={19}
                     disabled={isPending}
-                    className="input input-bordered join-item w-full uppercase font-mono tracking-wider text-center focus:outline-primary"
+                    className="input w-full join-item uppercase font-mono tracking-wider text-center focus:outline-primary"
                     required
                   />
                   <button

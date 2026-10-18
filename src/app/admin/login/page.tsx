@@ -96,7 +96,7 @@ export default async function AdminLoginPage({
                 >
                   Mot de passe
                 </label>
-                <PasswordInput id="password" name="password" />
+                <PasswordInput id="password" name="password" required withIcon />
               </div>
 
               <button type="submit" className="btn btn-primary w-full gap-2">

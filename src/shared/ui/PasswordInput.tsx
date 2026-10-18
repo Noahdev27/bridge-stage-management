@@ -1,39 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState, type InputHTMLAttributes } from "react";
 import { Eye, EyeOff, Lock } from "lucide-react";
 
-interface PasswordInputProps {
-  id: string;
-  name: string;
-  autoComplete?: "current-password" | "new-password";
-  placeholder?: string;
-  required?: boolean;
-}
+type PasswordInputProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "type" | "className"
+> & {
+  /** Cadenas à gauche du champ (formulaires de connexion). */
+  withIcon?: boolean;
+  /** Bordure d'erreur DaisyUI. */
+  invalid?: boolean;
+  /** Classes du cadre, par exemple une taille (`input-sm`). */
+  className?: string;
+};
 
 /**
  * Champ mot de passe avec bouton afficher / masquer.
  *
- * Le bouton est `type="button"` : sans cela, un clic dessus soumettrait le
- * formulaire de connexion.
+ * Accepte toutes les props d'un `<input>` (name, value, onChange, aria-*…) :
+ * il se substitue à un `<input type="password">` dans n'importe quel
+ * formulaire, contrôlé ou non. Le bouton est `type="button"` : sans cela, un
+ * clic dessus soumettrait le formulaire.
  */
 export function PasswordInput({
+  withIcon = false,
+  invalid = false,
+  className = "",
   id,
-  name,
   autoComplete = "current-password",
   placeholder = "••••••••",
-  required = true,
+  ...inputProps
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
 
   return (
-    <div className="input flex items-center gap-2 w-full pr-1">
-      <Lock className="w-4 h-4 text-base-content/50 shrink-0" aria-hidden="true" />
+    <div
+      className={`input flex items-center gap-2 w-full pr-1 ${
+        invalid ? "input-error" : ""
+      } ${className}`}
+    >
+      {withIcon && (
+        <Lock className="w-4 h-4 text-base-content/50 shrink-0" aria-hidden="true" />
+      )}
       <input
-        id={id}
-        name={name}
+        {...inputProps}
+        id={inputId}
         type={visible ? "text" : "password"}
-        required={required}
         autoComplete={autoComplete}
         placeholder={placeholder}
         // Pas de correction ni de majuscule automatique sur mobile une fois
@@ -46,10 +61,10 @@ export function PasswordInput({
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="btn btn-ghost btn-sm btn-square shrink-0"
+        className="btn btn-ghost btn-xs btn-square shrink-0"
         aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
         aria-pressed={visible}
-        aria-controls={id}
+        aria-controls={inputId}
       >
         {visible ? (
           <EyeOff className="w-4 h-4" aria-hidden="true" />

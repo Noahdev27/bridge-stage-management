@@ -27,18 +27,18 @@ export function OffersBrowser({ offers }: { offers: InternshipOffer[] }) {
 
   return (
     <div className="space-y-6">
-      <label className="form-control max-w-sm">
-        <span className="label py-1">
-          <span className="label-text font-semibold">Département</span>
+      <label className="flex flex-col gap-1.5 max-w-sm">
+        <span className="flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-base-content">Département</span>
           {isFiltering && (
-            <span className="label-text-alt inline-flex items-center gap-1.5 text-base-content/60">
+            <span className="text-xs inline-flex items-center gap-1.5 text-base-content/60">
               <span className="loading loading-spinner loading-xs" />
               Filtrage…
             </span>
           )}
         </span>
         <select
-          className="select select-bordered"
+          className="select w-full"
           value={current}
           onChange={(e) => handleDepartment(e.target.value)}
           aria-label="Filtrer par département"

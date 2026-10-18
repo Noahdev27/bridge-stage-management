@@ -57,21 +57,21 @@ export function RhEditForm({ rh }: RhEditFormProps) {
         className="card bg-base-100 border border-base-300 shadow-sm"
       >
         <div className="card-body p-5 gap-4">
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">Email</span>
+          <label className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">Email</span>
             </span>
             <input
               type="email"
               value={rh.email}
               disabled
-              className="input input-bordered bg-base-200 text-base-content/60 font-mono"
+              className="input w-full bg-base-200 text-base-content/60 font-mono"
             />
           </label>
 
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">
+          <label className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">
                 Nom complet <span className="text-error">*</span>
               </span>
             </span>
@@ -80,14 +80,14 @@ export function RhEditForm({ rh }: RhEditFormProps) {
               name="name"
               defaultValue={rh.name ?? ""}
               placeholder="Ex : Marie Fotso"
-              className={`input input-bordered ${
+              className={`input w-full ${
                 fieldErrors.name ? "input-error" : ""
               }`}
               maxLength={100}
               required
             />
             {fieldErrors.name && (
-              <span className="label-text-alt text-error mt-1">
+              <span className="text-xs text-error mt-1">
                 {fieldErrors.name}
               </span>
             )}

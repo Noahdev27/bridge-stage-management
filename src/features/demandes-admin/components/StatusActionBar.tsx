@@ -137,12 +137,12 @@ export function StatusActionBar({
               <h3 className="font-bold text-lg">{copy.title}</h3>
               <p className="text-sm text-base-content/60 mt-1">{copy.intro}</p>
 
-              <label className="form-control mt-4">
-                <span className="label py-1">
-                  <span className="label-text font-medium">{copy.label}</span>
+              <label className="flex flex-col gap-1.5 mt-4">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-base-content">{copy.label}</span>
                 </span>
                 <textarea
-                  className={`textarea textarea-bordered w-full h-32 ${
+                  className={`textarea w-full h-32 ${
                     isTooLong ? "textarea-error" : ""
                   }`}
                   value={comment}
@@ -151,12 +151,12 @@ export function StatusActionBar({
                   disabled={isPending}
                   autoFocus
                 />
-                <span className="label py-1">
-                  <span className="label-text-alt text-base-content/50">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-base-content/50">
                     Laissez vide pour n&apos;envoyer que le changement de statut.
                   </span>
                   <span
-                    className={`label-text-alt tabular-nums ${
+                    className={`text-xs tabular-nums ${
                       isTooLong ? "text-error font-semibold" : "text-base-content/50"
                     }`}
                   >

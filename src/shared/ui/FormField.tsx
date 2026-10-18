@@ -22,7 +22,7 @@ interface FormFieldProps {
  * Champ de formulaire : libellé au-dessus, contrôle pleine largeur, aide et
  * erreur en dessous.
  *
- * Remplace le motif `form-control` / `label-text` de DaisyUI 4, supprimé en
+ * Remplace le motif « form-control / label-text » de DaisyUI 4, supprimé en
  * DaisyUI 5 : sans lui, `.label` est en ligne et les libellés se plaçaient à
  * côté des champs au lieu d'au-dessus. Le libellé est relié au contrôle
  * (`htmlFor`) et l'erreur annoncée aux lecteurs d'écran (`aria-describedby`).

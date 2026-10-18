@@ -11,7 +11,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { Step1InfosInput } from "../schema";
-import { FieldGroup, FormField } from "./FormField";
+import { FieldGroup, FormField } from "@/shared/ui/FormField";
 
 interface StepInfosProps {
   data: Partial<Step1InfosInput>;

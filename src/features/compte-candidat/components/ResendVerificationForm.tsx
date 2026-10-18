@@ -62,8 +62,10 @@ export function ResendVerificationForm() {
       <input
         name="email"
         type="email"
-        className="input input-bordered input-sm w-full"
-        placeholder="Email"
+        className="input input-sm w-full"
+        placeholder="vous@exemple.com"
+        aria-label="Email du compte"
+        autoComplete="email"
         required
       />
       <div className="flex gap-2">

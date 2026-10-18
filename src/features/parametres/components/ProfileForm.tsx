@@ -40,38 +40,38 @@ export function ProfileForm({ email, role, currentName }: ProfileFormProps) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">Email</span>
+          <div className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">Email</span>
             </span>
             <input
               type="email"
               value={email}
               disabled
-              className="input input-bordered bg-base-200 text-base-content/60 font-mono"
+              className="input w-full bg-base-200 text-base-content/60 font-mono"
             />
-            <span className="label-text-alt text-base-content/50 mt-1">
+            <span className="text-xs text-base-content/50 mt-1">
               Identifiant de connexion, non modifiable ici.
             </span>
           </div>
 
-          <div className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">Rôle</span>
+          <div className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">Rôle</span>
             </span>
             <input
               type="text"
               value={ROLE_LABELS[role]}
               disabled
-              className="input input-bordered bg-base-200 text-base-content/60"
+              className="input w-full bg-base-200 text-base-content/60"
             />
           </div>
         </div>
 
         <form action={formAction} className="space-y-3 pt-2">
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">
+          <label className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">
                 Nom affiché <span className="text-error">*</span>
               </span>
             </span>
@@ -80,14 +80,14 @@ export function ProfileForm({ email, role, currentName }: ProfileFormProps) {
               name="name"
               defaultValue={currentName ?? ""}
               placeholder="Ex : Marie Ndongo"
-              className={`input input-bordered ${
+              className={`input w-full ${
                 fieldErrors.name ? "input-error" : ""
               }`}
               maxLength={100}
               required
             />
             {fieldErrors.name && (
-              <span className="label-text-alt text-error mt-1">
+              <span className="text-xs text-error mt-1">
                 {fieldErrors.name}
               </span>
             )}

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { MailCheck } from "lucide-react";
 import { registerCandidate, type CandidateActionState } from "../actions";
 import { useToast } from "@/shared/ui/ToastProvider";
+import { FormField } from "@/shared/ui/FormField";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 
 export function RegisterForm() {
   const { showToast } = useToast();
@@ -50,50 +52,69 @@ export function RegisterForm() {
       <div className="card-body gap-3">
         <h1 className="card-title text-secondary">Créer un compte candidat</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <input
-            name="firstName"
-            className="input input-bordered"
-            placeholder="Prénom"
-            required
-          />
-          <input
-            name="lastName"
-            className="input input-bordered"
-            placeholder="Nom"
-            required
-          />
+          <FormField label="Prénom">
+            {(control) => (
+              <input
+                {...control}
+                name="firstName"
+                autoComplete="given-name"
+                className="input w-full"
+                required
+              />
+            )}
+          </FormField>
+          <FormField label="Nom">
+            {(control) => (
+              <input
+                {...control}
+                name="lastName"
+                autoComplete="family-name"
+                className="input w-full"
+                required
+              />
+            )}
+          </FormField>
         </div>
-        <input
-          name="email"
-          type="email"
-          className="input input-bordered"
-          placeholder="Email"
-          required
-        />
-        <p className="text-xs text-base-content/50 -mt-1">
-          Utilisez l&apos;adresse avec laquelle vous avez postulé : un lien de
-          confirmation y sera envoyé.
-        </p>
-        <input
-          name="password"
-          type="password"
-          className="input input-bordered"
-          placeholder="Mot de passe (8 caractères minimum)"
-          minLength={8}
-          maxLength={128}
-          autoComplete="new-password"
-          required
-        />
-        <input
-          name="confirmPassword"
-          type="password"
-          className="input input-bordered"
-          placeholder="Confirmer le mot de passe"
-          minLength={8}
-          maxLength={128}
-          autoComplete="new-password"
-          required
-        />
+        <FormField
+          label="Email"
+          hint="Utilisez l'adresse avec laquelle vous avez postulé : un lien de confirmation y sera envoyé."
+        >
+          {(control) => (
+            <input
+              {...control}
+              name="email"
+              type="email"
+              autoComplete="email"
+              className="input w-full"
+              placeholder="vous@exemple.com"
+              required
+            />
+          )}
+        </FormField>
+        <FormField label="Mot de passe" hint="8 caractères minimum.">
+          {(control) => (
+            <PasswordInput
+              {...control}
+              name="password"
+              minLength={8}
+              maxLength={128}
+              autoComplete="new-password"
+              required
+            />
+          )}
+        </FormField>
+        <FormField label="Confirmer le mot de passe">
+          {(control) => (
+            <PasswordInput
+              {...control}
+              name="confirmPassword"
+              minLength={8}
+              maxLength={128}
+              autoComplete="new-password"
+              required
+            />
+          )}
+        </FormField>
         <button type="submit" className="btn btn-primary" disabled={isPending}>
           {isPending ? "Création…" : "Créer mon compte"}
         </button>

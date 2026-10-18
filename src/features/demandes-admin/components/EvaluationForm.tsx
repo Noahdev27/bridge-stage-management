@@ -49,7 +49,7 @@ export function EvaluationForm({
 
         <form action={formAction} className="space-y-4">
           <div>
-            <span className="label-text font-semibold block mb-2">
+            <span className="block mb-2 text-sm font-semibold text-base-content">
               Note du dossier <span className="text-error">*</span>
             </span>
             <div
@@ -81,15 +81,15 @@ export function EvaluationForm({
             <input type="hidden" name="rating" value={rating || ""} />
           </div>
 
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">
+          <label className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-base-content">
                 Commentaire interne
               </span>
             </span>
             <textarea
               name="comment"
-              className="textarea textarea-bordered min-h-28"
+              className="textarea w-full min-h-28"
               placeholder="Observations, points forts, réserves…"
               value={comment}
               onChange={(e) => setComment(e.target.value)}

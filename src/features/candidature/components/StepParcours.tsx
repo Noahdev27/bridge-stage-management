@@ -4,7 +4,7 @@ import { GraduationCap, Briefcase, Info } from "lucide-react";
 import type { Step2ParcoursInput } from "../schema";
 import type { InternshipType } from "@prisma/client";
 import { TYPE_LABELS, MIN_DURATION_MONTHS } from "@/shared/constants/domain";
-import { FieldGroup, FormField } from "./FormField";
+import { FieldGroup, FormField } from "@/shared/ui/FormField";
 
 interface StepParcoursProps {
   data: Partial<Step2ParcoursInput>;

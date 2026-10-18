@@ -3,6 +3,8 @@
 import { useActionState, useEffect, useRef } from "react";
 import { KeyRound, Save } from "lucide-react";
 import { useToast } from "@/shared/ui/ToastProvider";
+import { FormField } from "@/shared/ui/FormField";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 import { changePassword, type ParametresActionState } from "../actions";
 
 export function ChangePasswordForm() {
@@ -31,78 +33,60 @@ export function ChangePasswordForm() {
         </div>
 
         <form action={formAction} ref={formRef} className="space-y-3">
-          <label className="form-control">
-            <span className="label py-1">
-              <span className="label-text font-semibold">
-                Mot de passe actuel <span className="text-error">*</span>
-              </span>
-            </span>
-            <input
-              type="password"
-              name="currentPassword"
-              className={`input input-bordered ${
-                fieldErrors.currentPassword ? "input-error" : ""
-              }`}
-              autoComplete="current-password"
-              required
-            />
-            {fieldErrors.currentPassword && (
-              <span className="label-text-alt text-error mt-1">
-                {fieldErrors.currentPassword}
-              </span>
+          <FormField
+            label="Mot de passe actuel"
+            required
+            error={fieldErrors.currentPassword}
+          >
+            {(control) => (
+              <PasswordInput
+                {...control}
+                name="currentPassword"
+                autoComplete="current-password"
+                invalid={!!fieldErrors.currentPassword}
+                required
+              />
             )}
-          </label>
+          </FormField>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="form-control">
-              <span className="label py-1">
-                <span className="label-text font-semibold">
-                  Nouveau mot de passe <span className="text-error">*</span>
-                </span>
-              </span>
-              <input
-                type="password"
-                name="newPassword"
-                placeholder="Au moins 8 caractères"
-                className={`input input-bordered ${
-                  fieldErrors.newPassword ? "input-error" : ""
-                }`}
-                minLength={8}
-                maxLength={128}
-                autoComplete="new-password"
-                required
-              />
-              {fieldErrors.newPassword && (
-                <span className="label-text-alt text-error mt-1">
-                  {fieldErrors.newPassword}
-                </span>
+            <FormField
+              label="Nouveau mot de passe"
+              required
+              error={fieldErrors.newPassword}
+            >
+              {(control) => (
+                <PasswordInput
+                  {...control}
+                  name="newPassword"
+                  placeholder="Au moins 8 caractères"
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={128}
+                  invalid={!!fieldErrors.newPassword}
+                  required
+                />
               )}
-            </label>
+            </FormField>
 
-            <label className="form-control">
-              <span className="label py-1">
-                <span className="label-text font-semibold">
-                  Confirmer <span className="text-error">*</span>
-                </span>
-              </span>
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Retaper le nouveau mot de passe"
-                className={`input input-bordered ${
-                  fieldErrors.confirmPassword ? "input-error" : ""
-                }`}
-                minLength={8}
-                maxLength={128}
-                autoComplete="new-password"
-                required
-              />
-              {fieldErrors.confirmPassword && (
-                <span className="label-text-alt text-error mt-1">
-                  {fieldErrors.confirmPassword}
-                </span>
+            <FormField
+              label="Confirmer"
+              required
+              error={fieldErrors.confirmPassword}
+            >
+              {(control) => (
+                <PasswordInput
+                  {...control}
+                  name="confirmPassword"
+                  placeholder="Retaper le nouveau mot de passe"
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={128}
+                  invalid={!!fieldErrors.confirmPassword}
+                  required
+                />
               )}
-            </label>
+            </FormField>
           </div>
 
           {state.error && !state.fieldErrors && (

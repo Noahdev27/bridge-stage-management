@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MailCheck, Send } from "lucide-react";
 import { requestPasswordReset, type CandidateActionState } from "../actions";
 import { useToast } from "@/shared/ui/ToastProvider";
+import { FormField } from "@/shared/ui/FormField";
 
 export function ForgotPasswordForm() {
   const { showToast } = useToast();
@@ -57,14 +58,19 @@ export function ForgotPasswordForm() {
           Indiquez l&apos;adresse de votre compte : nous vous enverrons un lien
           pour choisir un nouveau mot de passe.
         </p>
-        <input
-          name="email"
-          type="email"
-          className="input input-bordered"
-          placeholder="Email"
-          autoComplete="email"
-          required
-        />
+        <FormField label="Email">
+          {(control) => (
+            <input
+              {...control}
+              name="email"
+              type="email"
+              className="input w-full"
+              placeholder="vous@exemple.com"
+              autoComplete="email"
+              required
+            />
+          )}
+        </FormField>
         <button
           type="submit"
           className="btn btn-primary gap-2"

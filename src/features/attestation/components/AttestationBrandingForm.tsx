@@ -93,7 +93,7 @@ function BrandingSlotCard({ slot, title, hint, preview }: BrandingSlotCardProps)
           name="image"
           accept="image/png,image/jpeg,image/webp"
           onChange={handleSelect}
-          className="file-input file-input-bordered file-input-sm w-full"
+          className="file-input file-input-sm w-full"
           aria-label={`Choisir une image pour ${title.toLowerCase()}`}
         />
 

@@ -112,14 +112,14 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
             Filtres
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-            <label className="form-control">
-              <span className="label py-1">
-                <span className="label-text font-semibold">Catégorie</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-base-content">Catégorie</span>
               </span>
               <select
                 name="category"
                 defaultValue={filters.category ?? ""}
-                className="select select-bordered select-sm w-full"
+                className="select w-full select-sm"
               >
                 <option value="">Toutes</option>
                 {(Object.keys(AUDIT_CATEGORY_LABELS) as AuditCategory[]).map(
@@ -131,14 +131,14 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
                 )}
               </select>
             </label>
-            <label className="form-control">
-              <span className="label py-1">
-                <span className="label-text font-semibold">Auteur</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-base-content">Auteur</span>
               </span>
               <select
                 name="actor"
                 defaultValue={filters.actor ?? ""}
-                className="select select-bordered select-sm w-full"
+                className="select w-full select-sm"
               >
                 <option value="">Tous</option>
                 {actors.map((actor) => (
