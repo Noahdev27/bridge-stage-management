@@ -3,7 +3,8 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { LogIn, Mail, Lock, AlertTriangle, ArrowLeft } from "lucide-react";
+import { LogIn, Mail, AlertTriangle, ArrowLeft } from "lucide-react";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 
 export default async function AdminLoginPage({
   searchParams,
@@ -71,7 +72,7 @@ export default async function AdminLoginPage({
                 >
                   Email
                 </label>
-                <div className="input input-bordered flex items-center gap-2 w-full">
+                <div className="input flex items-center gap-2 w-full">
                   <Mail
                     className="w-4 h-4 text-base-content/50 shrink-0"
                     aria-hidden="true"
@@ -95,21 +96,7 @@ export default async function AdminLoginPage({
                 >
                   Mot de passe
                 </label>
-                <div className="input input-bordered flex items-center gap-2 w-full">
-                  <Lock
-                    className="w-4 h-4 text-base-content/50 shrink-0"
-                    aria-hidden="true"
-                  />
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    className="grow"
-                  />
-                </div>
+                <PasswordInput id="password" name="password" />
               </div>
 
               <button type="submit" className="btn btn-primary w-full gap-2">

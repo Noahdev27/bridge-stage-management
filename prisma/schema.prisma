@@ -146,8 +146,9 @@ model Profile {
   phone     String
 
   lieudit   String
-  latitude  Float
-  longitude Float
+  /// Position GPS facultative (bouton « Me localiser ») : les deux ou aucune.
+  latitude  Float?
+  longitude Float?
 
   relativePhone1 String
   relativePhone2 String

@@ -104,11 +104,14 @@ export function StepValidation({
         <InfoRow icon={MapPin} label="Domicile (lieu-dit)" value={step1.lieudit} />
         <InfoRow
           icon={MapPin}
-          label="Coordonnées GPS"
+          label="Position GPS"
           value={
-            step1.latitude != null && step1.longitude != null
-              ? `${step1.latitude}, ${step1.longitude}`
-              : ""
+            step1.latitude != null &&
+            step1.longitude != null &&
+            `${step1.latitude}` !== "" &&
+            `${step1.longitude}` !== ""
+              ? "Enregistrée"
+              : "Non fournie"
           }
         />
         <InfoRow

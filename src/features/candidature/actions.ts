@@ -110,6 +110,7 @@ export async function submitCandidature(
     }
 
     const data = parsed.data;
+    const hasGps = data.latitude !== undefined && data.longitude !== undefined;
     const internshipType = data.internshipType as InternshipType;
 
     if (data.offerId) {
@@ -176,8 +177,9 @@ export async function submitCandidature(
             email: data.email,
             phone: data.phone,
             lieudit: data.lieudit,
-            latitude: data.latitude,
-            longitude: data.longitude,
+            // Une coordonnée seule ne localise rien : on garde les deux ou aucune.
+            latitude: hasGps ? data.latitude : null,
+            longitude: hasGps ? data.longitude : null,
             relativePhone1: data.relativePhone1,
             relativePhone2: data.relativePhone2,
             school: data.school,

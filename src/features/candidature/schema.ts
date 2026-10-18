@@ -40,25 +40,25 @@ const internationalPhoneSchema = z
       "Le numéro doit être un numéro international valide avec un indicatif pays.",
   });
 
-function gpsCoordinateSchema(min: number, max: number, label: string) {
-  return z
-    .union([z.string(), z.number()], { error: `La ${label} est requise.` })
-    .refine(
-      (value) => value !== "" && value !== null && value !== undefined,
-      { message: `La ${label} est requise.` }
-    )
-    .transform((value) =>
-      typeof value === "string" ? Number(value.replace(",", ".")) : value
-    )
-    .pipe(
-      z
-        .number()
-        .refine((value) => !Number.isNaN(value), "Coordonnée invalide.")
-        .refine(
-          (value) => value >= min && value <= max,
-          `La ${label} doit être comprise entre ${min} et ${max}.`
-        )
-    );
+/**
+ * Coordonnée GPS facultative : remplie par le bouton « Me localiser », absente
+ * si le candidat refuse la géolocalisation ou si son appareil ne la fournit
+ * pas. Le plan de localisation, exigé à l'étape Documents, couvre ce cas.
+ */
+function optionalGpsCoordinate(min: number, max: number, label: string) {
+  return z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) return undefined;
+      return typeof value === "string" ? Number(value.replace(",", ".")) : value;
+    },
+    z
+      .number({ error: "Coordonnée invalide." })
+      .refine(
+        (value) => value >= min && value <= max,
+        `La ${label} doit être comprise entre ${min} et ${max}.`
+      )
+      .optional()
+  );
 }
 
 // ===== ÉTAPE 1 : Informations personnelles =====
@@ -85,8 +85,8 @@ export const step1InfosSchema = z.object({
     255,
     "Le lieu-dit ne doit pas dépasser 255 caractères."
   ),
-  latitude: gpsCoordinateSchema(-90, 90, "latitude"),
-  longitude: gpsCoordinateSchema(-180, 180, "longitude"),
+  latitude: optionalGpsCoordinate(-90, 90, "latitude"),
+  longitude: optionalGpsCoordinate(-180, 180, "longitude"),
   // Téléphones de deux proches du candidat
   relativePhone1: internationalPhoneSchema,
   relativePhone2: internationalPhoneSchema,

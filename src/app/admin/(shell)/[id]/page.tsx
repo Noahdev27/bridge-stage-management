@@ -186,11 +186,22 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
                 </div>
                 <div>
                   <span className="block text-base-content/50 font-medium">
-                    Coordonnées GPS
+                    Position GPS
                   </span>
-                  <span className="font-semibold text-base-content">
-                    {profile.latitude}, {profile.longitude}
-                  </span>
+                  {profile.latitude != null && profile.longitude != null ? (
+                    <a
+                      href={`https://www.google.com/maps?q=${profile.latitude},${profile.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-primary link link-hover"
+                    >
+                      Voir sur la carte
+                    </a>
+                  ) : (
+                    <span className="font-semibold text-base-content/50">
+                      Non fournie
+                    </span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-base-content/50 font-medium">

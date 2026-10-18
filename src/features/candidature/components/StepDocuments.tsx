@@ -86,13 +86,13 @@ export function StepDocuments({
             <div key={docLabel} className="card bg-base-100 border border-base-300">
               <div className="card-body p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <label className="font-semibold text-sm">
+                  <span className="font-semibold text-sm">
                     {docLabel} <span className="text-error">*</span>
-                  </label>
+                  </span>
                   {isUploaded && (
-                    <div className="badge badge-success gap-1">
+                    <div className="badge badge-success badge-sm gap-1 shrink-0">
                       <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
-                      Uploadé
+                      Ajouté
                     </div>
                   )}
                 </div>
@@ -100,7 +100,7 @@ export function StepDocuments({
                 <input
                   type="file"
                   accept="application/pdf"
-                  className={`file-input file-input-bordered w-full ${
+                  className={`file-input w-full ${
                     error ? "file-input-error" : ""
                   }`}
                   onChange={(e) => handleFileChange(e, docLabel)}
@@ -108,11 +108,9 @@ export function StepDocuments({
                 />
 
                 {error && (
-                  <label className="label mt-2">
-                    <span className="label-text-alt text-error text-xs">
-                      {error}
-                    </span>
-                  </label>
+                  <p className="text-xs text-error mt-2" role="alert">
+                    {error}
+                  </p>
                 )}
 
                 {file && (
@@ -138,8 +136,8 @@ export function StepDocuments({
         )}
         <span>
           {isAllUploaded
-            ? "Tous les documents requis ont été uploadés."
-            : `${uploadedFiles.size} / ${requiredDocs.length} document(s) uploadé(s)`}
+            ? "Tous les documents requis sont ajoutés."
+            : `${uploadedFiles.size} / ${requiredDocs.length} document(s) ajouté(s)`}
         </span>
       </div>
     </div>
