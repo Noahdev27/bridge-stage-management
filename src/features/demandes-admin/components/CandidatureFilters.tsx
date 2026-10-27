@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Filter, RotateCcw } from "lucide-react";
+import { Filter, RotateCcw, Search } from "lucide-react";
 import { InternshipType } from "@prisma/client";
 
 const STATUS_FILTERS = [
@@ -20,8 +20,15 @@ const TYPE_FILTERS = [
 ];
 
 type TutorOption = { id: string; name: string | null; email: string };
+type OfferOption = { id: string; title: string; isPublished: boolean };
 
-export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) {
+export function CandidatureFilters({
+  tutors = [],
+  offers = [],
+}: {
+  tutors?: TutorOption[];
+  offers?: OfferOption[];
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -31,6 +38,9 @@ export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) 
   const currentTo = searchParams.get("to") || "";
   const currentTutorId = searchParams.get("tutorId") || "";
   const currentReport = searchParams.get("reportRequired") || "";
+  const currentOfferId = searchParams.get("offerId") || "";
+  const currentQuery = searchParams.get("q") || "";
+  const [query, setQuery] = useState(currentQuery);
 
   const [from, setFrom] = useState(currentFrom);
   const [to, setTo] = useState(currentTo);
@@ -41,16 +51,27 @@ export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) 
       if (!value) params.delete(key);
       else params.set(key, value);
     }
+    // Un nouveau filtre change le nombre de résultats : retour à la page 1.
+    params.delete("page");
     router.push(`/admin?${params.toString()}`);
   };
 
   const handleReset = () => {
     setFrom("");
     setTo("");
+    setQuery("");
     const params = new URLSearchParams(searchParams.toString());
-    ["status", "type", "from", "to", "tutorId", "reportRequired"].forEach((k) =>
-      params.delete(k)
-    );
+    [
+      "status",
+      "type",
+      "from",
+      "to",
+      "tutorId",
+      "reportRequired",
+      "offerId",
+      "q",
+      "page",
+    ].forEach((k) => params.delete(k));
     router.push(`/admin?${params.toString()}`);
   };
 
@@ -60,10 +81,36 @@ export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) 
     !!currentFrom ||
     !!currentTo ||
     !!currentTutorId ||
-    !!currentReport;
+    !!currentReport ||
+    !!currentOfferId ||
+    !!currentQuery;
 
   return (
     <div className="space-y-4 mb-6">
+      <form
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          pushParams({ q: query.trim() || null });
+        }}
+        className="flex gap-2"
+      >
+        <label className="input flex items-center gap-2 w-full sm:max-w-md">
+          <Search className="w-4 h-4 text-base-content/50 shrink-0" aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Nom, email ou code de suivi"
+            aria-label="Rechercher une candidature"
+            className="grow min-w-0"
+          />
+        </label>
+        <button type="submit" className="btn btn-primary">
+          Rechercher
+        </button>
+      </form>
+
       <div className="tabs tabs-box inline-flex bg-base-200 p-1">
         {STATUS_FILTERS.map((filter) => (
           <button
@@ -103,6 +150,25 @@ export function CandidatureFilters({ tutors = [] }: { tutors?: TutorOption[] }) 
                 {TYPE_FILTERS.map((option) => (
                   <option key={option.value || "all"} value={option.value}>
                     {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-base-content">Offre</span>
+              </span>
+              <select
+                className="select w-full select-sm"
+                value={currentOfferId}
+                onChange={(e) => pushParams({ offerId: e.target.value || null })}
+              >
+                <option value="">Toutes les offres</option>
+                {offers.map((offer) => (
+                  <option key={offer.id} value={offer.id}>
+                    {offer.title}
+                    {offer.isPublished ? "" : " (dépubliée)"}
                   </option>
                 ))}
               </select>

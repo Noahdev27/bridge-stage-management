@@ -21,6 +21,8 @@ export type ConfirmationHandoff = {
   submitted: true;
   /** Adresse à laquelle le code de suivi a été envoyé. */
   email?: string;
+  /** `false` si l'email contenant le code de suivi n'a pas pu partir. */
+  emailSent?: boolean;
 };
 
 /** `false` si le stockage est indisponible (navigation privée, quota). */
@@ -57,10 +59,11 @@ export function parseConfirmationHandoff(raw: string): ConfirmationHandoff | nul
       return null;
     }
 
-    const { email } = parsed as ConfirmationHandoff;
+    const { email, emailSent } = parsed as ConfirmationHandoff;
     return {
       submitted: true,
       email: typeof email === "string" ? email : undefined,
+      emailSent: emailSent !== false,
     };
   } catch {
     return null;

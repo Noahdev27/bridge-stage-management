@@ -1,7 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { AuthError } from "next-auth";
+import { AuthError, CredentialsSignin } from "next-auth";
 import { prisma } from "@/shared/db/prisma";
 import {
   candidateRegisterSchema,
@@ -11,7 +11,17 @@ import {
 } from "./schema";
 import { issueEmailVerification } from "./verification";
 import { consumePasswordReset, issuePasswordReset } from "./password-reset";
-import { auth, signIn } from "@/shared/auth/auth";
+import { revalidatePath } from "next/cache";
+import { auth, signIn, signOut, TOO_MANY_ATTEMPTS_CODE } from "@/shared/auth/auth";
+import { AuthorizationError, requireCandidate } from "@/shared/auth/guards";
+import { recordAudit } from "@/shared/audit/audit";
+import { deleteRequestWithFiles } from "@/features/demandes-admin/purge";
+import {
+  RATE_LIMITS,
+  consumeRateLimit,
+  currentClientIp,
+  formatRetryAfter,
+} from "@/shared/security/rate-limit";
 
 export type CandidateActionState = {
   error?: string;
@@ -24,6 +34,13 @@ export async function registerCandidate(
   _prev: CandidateActionState,
   formData: FormData
 ): Promise<CandidateActionState> {
+  const limit = await consumeRateLimit(RATE_LIMITS.emailFormsPerIp, await currentClientIp());
+  if (!limit.allowed) {
+    return {
+      error: `Trop de demandes depuis votre connexion. Réessayez ${formatRetryAfter(limit.retryAfterSeconds)}.`,
+    };
+  }
+
   const parsed = candidateRegisterSchema.safeParse({
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
@@ -111,6 +128,11 @@ export async function loginCandidate(
     });
   } catch (err) {
     if (err instanceof AuthError) {
+      if (err instanceof CredentialsSignin && err.code === TOO_MANY_ATTEMPTS_CODE) {
+        return {
+          error: "Trop de tentatives échouées. Réessayez dans 15 minutes.",
+        };
+      }
       return { error: "Email ou mot de passe incorrect." };
     }
     throw err;
@@ -128,6 +150,13 @@ export async function resendVerification(
   _prev: CandidateActionState,
   formData: FormData
 ): Promise<CandidateActionState> {
+  const limit = await consumeRateLimit(RATE_LIMITS.emailFormsPerIp, await currentClientIp());
+  if (!limit.allowed) {
+    return {
+      error: `Trop de demandes depuis votre connexion. Réessayez ${formatRetryAfter(limit.retryAfterSeconds)}.`,
+    };
+  }
+
   const parsed = resendVerificationSchema.safeParse({
     email: formData.get("email"),
   });
@@ -167,6 +196,13 @@ export async function requestPasswordReset(
   _prev: CandidateActionState,
   formData: FormData
 ): Promise<CandidateActionState> {
+  const limit = await consumeRateLimit(RATE_LIMITS.emailFormsPerIp, await currentClientIp());
+  if (!limit.allowed) {
+    return {
+      error: `Trop de demandes depuis votre connexion. Réessayez ${formatRetryAfter(limit.retryAfterSeconds)}.`,
+    };
+  }
+
   const parsed = passwordResetRequestSchema.safeParse({
     email: formData.get("email"),
   });
@@ -252,7 +288,11 @@ export async function getCandidateRequests() {
   }
 
   return prisma.internshipRequest.findMany({
-    where: { profile: { email: session.user.email } },
+    // Insensible à la casse : le compte est enregistré en minuscules, le
+    // dossier avec l'adresse telle que saisie dans le formulaire.
+    where: {
+      profile: { email: { equals: session.user.email, mode: "insensitive" } },
+    },
     include: { profile: true },
     orderBy: { createdAt: "desc" },
   });
@@ -269,4 +309,117 @@ export async function isCandidateEmailVerified(): Promise<boolean> {
   });
 
   return !!account?.emailVerifiedAt;
+}
+
+/**
+ * Auteur des actions d'un candidat dans le journal d'audit. Son adresse n'y
+ * est pas écrite : le journal n'est jamais purgé, il conserverait sinon une
+ * donnée personnelle au-delà de la suppression du dossier.
+ */
+const CANDIDATE_ACTOR = { email: "candidat", role: "CANDIDATE" } as const;
+
+/** Statuts d'une candidature que son auteur peut encore retirer. */
+const WITHDRAWABLE = ["PENDING", "PROCESS"] as const;
+
+async function requireVerifiedCandidate() {
+  const candidate = await requireCandidate();
+  const account = await prisma.user.findUnique({
+    where: { email: candidate.email },
+    select: { emailVerifiedAt: true },
+  });
+  if (!account?.emailVerifiedAt) throw new AuthorizationError();
+  return candidate;
+}
+
+/**
+ * Retrait d'une candidature par son auteur.
+ *
+ * Possible tant que la RH n'a pas rendu sa décision. Le dossier est effacé
+ * entièrement (données et fichiers), comme le ferait la purge RGPD : un
+ * candidat qui se retire ne doit laisser aucune trace personnelle.
+ */
+export async function withdrawCandidature(
+  requestId: string
+): Promise<CandidateActionState> {
+  try {
+    const candidate = await requireVerifiedCandidate();
+
+    const request = await prisma.internshipRequest.findFirst({
+      where: {
+        id: requestId,
+        status: { in: [...WITHDRAWABLE] },
+        profile: { email: { equals: candidate.email, mode: "insensitive" } },
+      },
+      include: { documents: true },
+    });
+
+    if (!request) {
+      return {
+        error:
+          "Cette candidature ne peut plus être retirée : une décision a déjà été rendue.",
+      };
+    }
+
+    await deleteRequestWithFiles(request);
+    await recordAudit(CANDIDATE_ACTOR, {
+      action: "request.withdrawn",
+      summary: "Candidature retirée par le candidat",
+      targetType: "request",
+      targetId: request.id,
+    });
+
+    revalidatePath("/espace-candidat");
+    revalidatePath("/admin");
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return { error: "Accès non autorisé." };
+    }
+    console.error("[compte-candidat] Échec du retrait de candidature:", error);
+    return { error: "Une erreur est survenue. Veuillez réessayer." };
+  }
+}
+
+/**
+ * Suppression du compte candidat par son titulaire.
+ *
+ * Les candidatures encore en attente ou en traitement sont retirées avec lui.
+ * Les dossiers ayant reçu une décision restent du ressort de la RH : un
+ * dossier refusé est effacé par la purge RGPD, un dossier accepté sert à la
+ * délivrance de l'attestation.
+ */
+export async function deleteCandidateAccount(): Promise<CandidateActionState | void> {
+  try {
+    const candidate = await requireVerifiedCandidate();
+
+    const pending = await prisma.internshipRequest.findMany({
+      where: {
+        status: { in: [...WITHDRAWABLE] },
+        profile: { email: { equals: candidate.email, mode: "insensitive" } },
+      },
+      include: { documents: true },
+    });
+    for (const request of pending) {
+      await deleteRequestWithFiles(request);
+    }
+
+    await prisma.user.deleteMany({
+      where: { email: candidate.email, role: "CANDIDATE" },
+    });
+
+    await recordAudit(CANDIDATE_ACTOR, {
+      action: "account.candidate_deleted",
+      summary: `Compte candidat supprimé par son titulaire (${pending.length} candidature(s) en cours retirée(s))`,
+    });
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return { error: "Accès non autorisé." };
+    }
+    console.error("[compte-candidat] Échec de suppression du compte:", error);
+    return { error: "Une erreur est survenue. Veuillez réessayer." };
+  }
+
+  // Hors du try : la redirection de signOut est une exception volontaire.
+  await signOut({ redirectTo: "/?compte=supprime" });
 }

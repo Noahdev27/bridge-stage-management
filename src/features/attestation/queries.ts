@@ -2,7 +2,75 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/shared/db/prisma";
+import { randomBytes } from "crypto";
 import { ATTESTATION_REF_PREFIX } from "./constants";
+import { TRACKING_CODE_ALPHABET } from "@/shared/tracking/tracking-code";
+
+/** 12 caractères sur un alphabet de 32 : 60 bits, impossible à deviner. */
+export const VERIFY_CODE_LENGTH = 12;
+
+function generateVerifyCode(): string {
+  let code = "";
+  for (const byte of randomBytes(VERIFY_CODE_LENGTH)) {
+    code += TRACKING_CODE_ALPHABET[byte % TRACKING_CODE_ALPHABET.length];
+  }
+  return code;
+}
+
+/**
+ * Code de vérification public de l'attestation, attribué une seule fois.
+ *
+ * Distinct du code de suivi : l'attestation est remise à des tiers (écoles,
+ * employeurs), alors que le code de suivi ouvre la page de suivi du dossier.
+ * Ce code-ci ne donne accès qu'à la confirmation d'authenticité.
+ */
+export async function ensureVerifyCode(requestId: string): Promise<string> {
+  const existing = await prisma.internshipRequest.findUnique({
+    where: { id: requestId },
+    select: { attestationVerifyCode: true },
+  });
+  if (existing?.attestationVerifyCode) return existing.attestationVerifyCode;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const code = generateVerifyCode();
+    try {
+      await prisma.internshipRequest.update({
+        where: { id: requestId },
+        data: { attestationVerifyCode: code },
+      });
+      return code;
+    } catch (error) {
+      const taken =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002";
+      if (!taken) throw error;
+    }
+  }
+  throw new Error("Impossible d'attribuer un code de vérification.");
+}
+
+/**
+ * Attestation correspondant à un code de vérification, pour la page publique.
+ * Ne renvoie que ce qu'un tiers doit pouvoir confirmer, rien de plus.
+ */
+export async function findAttestationByVerifyCode(code: string) {
+  const request = await prisma.internshipRequest.findUnique({
+    where: { attestationVerifyCode: code },
+    select: {
+      type: true,
+      startDate: true,
+      endDate: true,
+      attestationRef: true,
+      attestationIssuedAt: true,
+      status: true,
+      profile: { select: { firstName: true, lastName: true } },
+    },
+  });
+  if (!request?.attestationRef || !request.endDate || request.status !== "ACCEPTED") {
+    return null;
+  }
+  return request;
+}
 
 /** Dossier complet nécessaire au rendu de l'attestation. */
 export async function getAttestationRequest(requestId: string) {
@@ -91,7 +159,7 @@ export async function getCandidateAttestation(
       status: "ACCEPTED",
       endDate: { not: null },
       attestationRef: { not: null },
-      profile: { email: candidateEmail },
+      profile: { email: { equals: candidateEmail, mode: "insensitive" } },
     },
     include: {
       profile: true,

@@ -1,5 +1,5 @@
-import { signIn } from "@/shared/auth/auth";
-import { AuthError } from "next-auth";
+import { signIn, TOO_MANY_ATTEMPTS_CODE } from "@/shared/auth/auth";
+import { AuthError, CredentialsSignin } from "next-auth";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -24,7 +24,9 @@ export default async function AdminLoginPage({
     } catch (err) {
       // Mauvais identifiants : on revient au login avec un indicateur d'erreur.
       if (err instanceof AuthError) {
-        redirect("/admin/login?error=1");
+        const locked =
+          err instanceof CredentialsSignin && err.code === TOO_MANY_ATTEMPTS_CODE;
+        redirect(`/admin/login?error=${locked ? "locked" : "1"}`);
       }
       // Succès : signIn lève une redirection (NEXT_REDIRECT) à laisser remonter.
       throw err;
@@ -60,7 +62,9 @@ export default async function AdminLoginPage({
                 className="alert alert-error text-sm py-2 mb-2 text-white"
               >
                 <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
-                Identifiants incorrects. Veuillez réessayer.
+                {error === "locked"
+                  ? "Trop de tentatives échouées. Réessayez dans 15 minutes."
+                  : "Identifiants incorrects. Veuillez réessayer."}
               </div>
             )}
 

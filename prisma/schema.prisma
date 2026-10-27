@@ -108,6 +108,11 @@ model InternshipRequest {
   attestationRef      String?   @unique
   attestationIssuedAt DateTime?
 
+  /// Code de vérification public imprimé sur l'attestation (et dans son QR
+  /// code). Distinct du code de suivi : l'attestation est remise à des tiers,
+  /// et le code de suivi ouvre la page de suivi du dossier.
+  attestationVerifyCode String? @unique
+
   profile    Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId  String     @unique
   documents  Document[]
@@ -222,4 +227,18 @@ model AuditLog {
   @@index([createdAt])
   @@index([action])
   @@index([actorEmail])
+}
+
+/// Compteurs de limitation de débit (connexion, formulaires publics).
+///
+/// Stockés en base plutôt qu'en mémoire : chaque requête peut tomber sur une
+/// instance serverless différente, un compteur en mémoire ne verrait qu'une
+/// fraction des tentatives. Fenêtre fixe : la clé inclut le début de fenêtre,
+/// les lignes expirées sont supprimées par le cron quotidien.
+model RateLimit {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }

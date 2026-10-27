@@ -67,7 +67,7 @@ npx auth secret      # génère et propose une valeur pour AUTH_SECRET
 ```bash
 cp .env.example .env          # puis colle tes valeurs (DATABASE_URL, SUPABASE_*, AUTH_SECRET)
 npm run db:migrate            # crée les tables en base
-npm run db:seed               # crée le compte RH de test (rh@bridge.test / password123)
+ALLOW_DEMO_SEED=true npm run db:seed   # comptes de démo, base LOCALE uniquement
 npm run dev                   # http://localhost:3000
 ```
 

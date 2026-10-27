@@ -42,6 +42,8 @@ function toFieldErrors(
 function revalidateOfferPaths(offerId?: string) {
   revalidatePath("/admin/offres");
   revalidatePath("/offres");
+  // L'accueil affiche les offres ouvertes.
+  revalidatePath("/");
   if (offerId) {
     revalidatePath(`/admin/offres/${offerId}`);
   }

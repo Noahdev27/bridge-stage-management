@@ -10,6 +10,10 @@ interface StepParcoursProps {
   data: Partial<Step2ParcoursInput>;
   onChange: (field: keyof Step2ParcoursInput, value: string | boolean) => void;
   errors?: Record<string, string>;
+  /** Type imposé par l'offre choisie : il ne peut plus être modifié. */
+  lockedType?: InternshipType;
+  /** Durée minimale fixée par l'offre, si elle dépasse le minimum légal. */
+  offerMinDuration?: number;
 }
 
 const TYPE_OPTIONS: {
@@ -40,9 +44,18 @@ const LEVELS = [
   { value: "BAC+5", label: "BAC+5" },
 ];
 
-export function StepParcours({ data, onChange, errors = {} }: StepParcoursProps) {
+export function StepParcours({
+  data,
+  onChange,
+  errors = {},
+  lockedType,
+  offerMinDuration,
+}: StepParcoursProps) {
   const internshipType = data.internshipType as InternshipType | undefined;
-  const minDuration = internshipType ? MIN_DURATION_MONTHS[internshipType] : 1;
+  const minDuration = Math.max(
+    internshipType ? MIN_DURATION_MONTHS[internshipType] : 1,
+    offerMinDuration ?? 0
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -115,7 +128,9 @@ export function StepParcours({ data, onChange, errors = {} }: StepParcoursProps)
             aria-invalid={!!errors.internshipType}
             className="grid grid-cols-1 sm:grid-cols-2 gap-3"
           >
-            {TYPE_OPTIONS.map(({ value, icon: Icon, description }) => {
+            {TYPE_OPTIONS.filter(
+              (option) => !lockedType || option.value === lockedType
+            ).map(({ value, icon: Icon, description }) => {
               const checked = data.internshipType === value;
               return (
                 <label
@@ -135,6 +150,7 @@ export function StepParcours({ data, onChange, errors = {} }: StepParcoursProps)
                     value={value}
                     checked={checked}
                     onChange={(e) => onChange("internshipType", e.target.value)}
+                    disabled={!!lockedType}
                     required
                   />
                   <Icon
@@ -153,6 +169,11 @@ export function StepParcours({ data, onChange, errors = {} }: StepParcoursProps)
               );
             })}
           </div>
+          {lockedType && (
+            <p className="text-xs text-base-content/55">
+              Le type de stage est fixé par l&apos;offre à laquelle vous postulez.
+            </p>
+          )}
           {errors.internshipType && (
             <p className="text-xs text-error" role="alert">
               {errors.internshipType}
@@ -166,9 +187,11 @@ export function StepParcours({ data, onChange, errors = {} }: StepParcoursProps)
             required
             error={errors.duration}
             hint={
-              internshipType
-                ? `Au moins ${minDuration} mois pour un stage ${TYPE_LABELS[internshipType].toLowerCase()}.`
-                : "Choisissez d'abord le type de stage."
+              offerMinDuration && offerMinDuration >= minDuration
+                ? `Au moins ${minDuration} mois pour cette offre.`
+                : internshipType
+                  ? `Au moins ${minDuration} mois pour un stage ${TYPE_LABELS[internshipType].toLowerCase()}.`
+                  : "Choisissez d'abord le type de stage."
             }
           >
             {(control) => (

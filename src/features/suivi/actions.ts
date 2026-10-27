@@ -3,6 +3,12 @@
 import { trackingCodeResendSchema, trackingCodeSchema } from "./schema";
 import { getCandidatureByTrackingCode } from "./queries";
 import { resendTrackingCodes } from "./tracking-code-resend";
+import {
+  RATE_LIMITS,
+  consumeRateLimit,
+  currentClientIp,
+  formatRetryAfter,
+} from "@/shared/security/rate-limit";
 
 export type SuiviActionState = {
   error?: string;
@@ -36,6 +42,16 @@ export async function checkTrackingStatus(
   formData: FormData
 ): Promise<SuiviActionState> {
   try {
+    // Sans limite, ce formulaire public permettrait d'essayer des codes en
+    // série ; 80 bits d'entropie le rendent vain, mais pas gratuit.
+    const limit = await consumeRateLimit(RATE_LIMITS.trackingLookupPerIp, await currentClientIp());
+    if (!limit.allowed) {
+      return {
+        candidature: null,
+        error: `Trop de demandes depuis votre connexion. Réessayez ${formatRetryAfter(limit.retryAfterSeconds)}.`,
+      };
+    }
+
     // 1. Validation du champ avec le schéma Zod
     const rawCode = formData.get("trackingCode");
     const parsed = trackingCodeSchema.safeParse({ trackingCode: rawCode });
@@ -100,6 +116,13 @@ export async function resendTrackingCode(
   _prev: ResendCodeActionState,
   formData: FormData
 ): Promise<ResendCodeActionState> {
+  const limit = await consumeRateLimit(RATE_LIMITS.emailFormsPerIp, await currentClientIp());
+  if (!limit.allowed) {
+    return {
+      error: `Trop de demandes depuis votre connexion. Réessayez ${formatRetryAfter(limit.retryAfterSeconds)}.`,
+    };
+  }
+
   const parsed = trackingCodeResendSchema.safeParse({
     email: formData.get("email"),
   });

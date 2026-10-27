@@ -28,6 +28,8 @@ interface StepValidationProps {
   step1: Partial<Step1InfosInput>;
   step2: Partial<Step2ParcoursInput>;
   uploadedFilesCount: number;
+  consent: boolean;
+  onConsentChange: (value: boolean) => void;
 }
 
 /** Une ligne « libellé → valeur » avec une icône discrète. */
@@ -78,6 +80,8 @@ export function StepValidation({
   step1,
   step2,
   uploadedFilesCount,
+  consent,
+  onConsentChange,
 }: StepValidationProps) {
   const internshipType = step2.internshipType as InternshipType | undefined;
   const requiredDocsCount = internshipType
@@ -212,6 +216,34 @@ export function StepValidation({
           </div>
         </div>
       </SectionCard>
+
+      {/* Information et consentement : les données du candidat et celles de
+          ses deux proches ne sont traitées qu'une fois ce point accepté. */}
+      <label className="flex items-start gap-3 rounded-box border border-base-300 p-4 cursor-pointer hover:border-primary/50 transition-colors">
+        <input
+          type="checkbox"
+          className="checkbox checkbox-primary mt-0.5"
+          checked={consent}
+          onChange={(e) => onConsentChange(e.target.checked)}
+          required
+        />
+        <span className="text-sm text-base-content/80">
+          J&apos;accepte que Bridge Technologies Solutions traite les
+          informations de ce dossier pour étudier ma candidature, et
+          j&apos;ai informé les deux proches dont j&apos;indique le numéro.{" "}
+          <a
+            href="/confidentialite"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link link-primary"
+          >
+            Politique de confidentialité
+          </a>
+          <span className="text-error ml-0.5" aria-hidden="true">
+            *
+          </span>
+        </span>
+      </label>
 
       {/* Rappel avant envoi */}
       <div className="flex gap-3 rounded-box border border-accent/40 bg-accent/10 px-4 py-3.5">

@@ -25,6 +25,7 @@ export const AUDIT_ACTIONS = {
   "request.tutor_removed": { label: "Tuteur retiré", category: "dossiers" },
   "request.evaluated": { label: "Évaluation enregistrée", category: "dossiers" },
   "request.purged": { label: "Purge RGPD", category: "dossiers" },
+  "request.withdrawn": { label: "Candidature retirée", category: "dossiers" },
 
   "attestation.period_saved": { label: "Période de stage saisie", category: "attestations" },
   "attestation.issued": { label: "Attestation délivrée", category: "attestations" },
@@ -38,6 +39,7 @@ export const AUDIT_ACTIONS = {
   "account.tutor_renamed": { label: "Tuteur renommé", category: "comptes" },
   "account.tutor_deleted": { label: "Tuteur supprimé", category: "comptes" },
   "account.profile_renamed": { label: "Nom de profil modifié", category: "comptes" },
+  "account.candidate_deleted": { label: "Compte candidat supprimé", category: "comptes" },
 
   "offer.created": { label: "Offre créée", category: "offres" },
   "offer.updated": { label: "Offre modifiée", category: "offres" },

@@ -129,9 +129,18 @@ export function OfferAdminList({ offers, canManage }: OfferAdminListProps) {
                 {offer.durationMonths} mois
               </td>
               <td className="text-center">
-                <span className="badge badge-ghost">
-                  {offer._count.requests}
-                </span>
+                {/* Le compteur mène à la liste des candidatures de cette offre. */}
+                {offer._count.requests > 0 ? (
+                  <Link
+                    href={`/admin?offerId=${offer.id}`}
+                    className="badge badge-primary badge-outline hover:badge-primary"
+                    title="Voir les candidatures de cette offre"
+                  >
+                    {offer._count.requests}
+                  </Link>
+                ) : (
+                  <span className="badge badge-ghost">0</span>
+                )}
               </td>
               <td className="text-center">
                 {offer.isPublished ? (

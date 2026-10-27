@@ -8,6 +8,10 @@ import {
 import { STATUS_LABELS, TYPE_LABELS } from "@/shared/constants/domain";
 import { formatTrackingCode } from "@/shared/tracking/tracking-code";
 import {
+  DeleteAccountSection,
+  WithdrawCandidatureButton,
+} from "@/features/compte-candidat/components/CandidateAccountActions";
+import {
   LogOut,
   Search,
   MailWarning,
@@ -143,6 +147,10 @@ export default async function EspaceCandidatPage() {
                         c'est-à-dire quand la RH a réellement délivré le
                         document. Un dossier accepté mais non encore attesté
                         n'affiche rien : la route le refuserait de toute façon. */}
+                    {(req.status === "PENDING" || req.status === "PROCESS") && (
+                      <WithdrawCandidatureButton requestId={req.id} />
+                    )}
+
                     {req.attestationRef && (
                       <a
                         href={`/api/candidat/attestation/${req.id}`}
@@ -194,6 +202,8 @@ export default async function EspaceCandidatPage() {
             )}
           </div>
         </section>
+
+        <DeleteAccountSection />
       </div>
     </main>
   );

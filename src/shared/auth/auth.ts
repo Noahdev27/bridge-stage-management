@@ -1,8 +1,32 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/shared/db/prisma";
 import { recordAudit } from "@/shared/audit/audit";
+import {
+  RATE_LIMITS,
+  clientIpFrom,
+  consumeRateLimit,
+  isRateLimited,
+} from "@/shared/security/rate-limit";
+
+/**
+ * Trop d'échecs récents : la connexion est refusée sans même comparer le mot
+ * de passe. Le code est relu par les pages de connexion pour afficher un
+ * message dédié plutôt que « identifiants incorrects ».
+ */
+export class TooManyLoginAttempts extends CredentialsSignin {
+  code = "too_many_attempts";
+}
+
+export const TOO_MANY_ATTEMPTS_CODE = "too_many_attempts";
+
+/**
+ * Empreinte bcrypt factice, comparée quand le compte n'existe pas : la
+ * réponse prend alors le même temps qu'un mauvais mot de passe, et la durée
+ * ne révèle plus quelles adresses sont inscrites.
+ */
+const DUMMY_HASH = "$2b$10$NokpYvhNfY.4oc6hVj7XtO4DY3UyjPIRoTyswAdKszDJGfCnd.31W";
 
 /**
  * Les connexions ne sont journalisées que pour les comptes du back-office : ce
@@ -26,7 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Mot de passe", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const rawEmail = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
         if (!rawEmail || !password) return null;
@@ -34,14 +58,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Même normalisation qu'à l'inscription, sinon une différence de casse
         // empêcherait de retrouver le compte.
         const email = rawEmail.trim().toLowerCase();
+        const ip = clientIpFrom(request.headers);
+
+        // Force brute : au-delà de 5 échecs sur un compte, ou de 20 depuis une
+        // même adresse, en 15 minutes, on refuse avant toute vérification.
+        const [accountLimit, ipLimit] = await Promise.all([
+          isRateLimited(RATE_LIMITS.loginFailuresPerAccount, email),
+          isRateLimited(RATE_LIMITS.loginFailuresPerIp, ip),
+        ]);
+        if (!accountLimit.allowed || !ipLimit.allowed) {
+          throw new TooManyLoginAttempts();
+        }
+
+        const recordFailure = () =>
+          Promise.all([
+            consumeRateLimit(RATE_LIMITS.loginFailuresPerAccount, email),
+            consumeRateLimit(RATE_LIMITS.loginFailuresPerIp, ip),
+          ]);
 
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) return null;
+        if (!user) {
+          await bcrypt.compare(password, DUMMY_HASH);
+          await recordFailure();
+          return null;
+        }
 
         const valid = await bcrypt.compare(password, user.password);
         const isStaff = STAFF_ROLES.has(user.role);
 
         if (!valid) {
+          await recordFailure();
           // Un enchaînement d'échecs sur un compte du back-office est le signe
           // d'une attaque par force brute : c'est ce que cette trace rend visible.
           if (isStaff) {

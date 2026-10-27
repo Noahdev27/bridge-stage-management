@@ -4,6 +4,18 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  // Ce seed crée des comptes de démonstration au mot de passe public
+  // (« password123 », cité dans la documentation). Lancé par erreur sur la base
+  // de production — vers laquelle pointe le .env du projet —, il ouvrirait le
+  // back-office à n'importe qui. Il exige donc un accord explicite.
+  if (process.env.ALLOW_DEMO_SEED !== "true") {
+    throw new Error(
+      "Seed de démonstration refusé. Il crée des comptes au mot de passe public : " +
+        "à réserver à une base locale de test, avec ALLOW_DEMO_SEED=true. " +
+        "Pour créer l'administrateur de production, utilisez npm run db:seed:admin."
+    );
+  }
+
   const password = await bcrypt.hash("password123", 10);
 
   // Comptes du back-office : vérifiés d'office (la confirmation par email ne

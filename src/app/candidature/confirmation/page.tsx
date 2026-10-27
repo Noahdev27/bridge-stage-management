@@ -63,5 +63,5 @@ export default function CandidatureConfirmationPage() {
     );
   }
 
-  return <SuccessScreen email={handoff.email} />;
+  return <SuccessScreen email={handoff.email} emailSent={handoff.emailSent} />;
 }

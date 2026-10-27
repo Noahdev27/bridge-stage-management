@@ -27,6 +27,30 @@ export function getPurgeCutoff(months: number = REJECTED_PURGE_MONTHS): Date {
   return cutoff;
 }
 
+/**
+ * Supprime un dossier et tout ce qui s'y rattache : fichiers du stockage,
+ * profil, demande, documents et évaluation.
+ *
+ * Partagé par la purge RGPD et par le retrait d'une candidature par le
+ * candidat : les deux doivent effacer exactement les mêmes données.
+ */
+export async function deleteRequestWithFiles(request: {
+  id: string;
+  createdAt: Date;
+  profileId: string;
+  documents: { storagePath: string | null; url: string }[];
+}): Promise<void> {
+  const storagePaths = request.documents
+    .map((doc) => doc.storagePath ?? extractStoragePathFromUrl(doc.url))
+    .filter((path): path is string => !!path);
+
+  await deleteStoragePaths(storagePaths);
+  await deleteRequestDocumentsFolder(request.id, request.createdAt);
+
+  // La suppression du profil cascade sur la demande et ses documents.
+  await prisma.profile.delete({ where: { id: request.profileId } });
+}
+
 export async function runRejectedPurge(): Promise<PurgeResult> {
   const cutoff = getPurgeCutoff();
 
@@ -35,10 +59,7 @@ export async function runRejectedPurge(): Promise<PurgeResult> {
       status: "REJECTED",
       updatedAt: { lte: cutoff },
     },
-    include: {
-      documents: true,
-      profile: { select: { id: true } },
-    },
+    include: { documents: true },
   });
 
   if (outdated.length === 0) {
@@ -46,15 +67,7 @@ export async function runRejectedPurge(): Promise<PurgeResult> {
   }
 
   for (const request of outdated) {
-    const storagePaths = request.documents
-      .map((doc) => doc.storagePath ?? extractStoragePathFromUrl(doc.url))
-      .filter((path): path is string => !!path);
-
-    await deleteStoragePaths(storagePaths);
-    await deleteRequestDocumentsFolder(request.id, request.createdAt);
-
-    // La suppression du profil cascade sur la demande et ses documents.
-    await prisma.profile.delete({ where: { id: request.profile.id } });
+    await deleteRequestWithFiles(request);
   }
 
   return { purgedCount: outdated.length };

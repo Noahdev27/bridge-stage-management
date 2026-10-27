@@ -2,11 +2,20 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { CheckCircle2, MailCheck, Search, Home, Info } from "lucide-react";
+import {
+  CheckCircle2,
+  MailCheck,
+  MailWarning,
+  Search,
+  Home,
+  Info,
+} from "lucide-react";
 import { useToast } from "@/shared/ui/ToastProvider";
 
 interface SuccessScreenProps {
   email?: string;
+  /** `false` si l'email contenant le code de suivi n'a pas pu partir. */
+  emailSent?: boolean;
 }
 
 /**
@@ -17,7 +26,7 @@ interface SuccessScreenProps {
  * L'email fait aussi office de conservation : le candidat le retrouve des
  * semaines plus tard, contrairement à un onglet fermé.
  */
-export function SuccessScreen({ email }: SuccessScreenProps) {
+export function SuccessScreen({ email, emailSent = true }: SuccessScreenProps) {
   const { showToast } = useToast();
   const hasAnnouncedSuccess = useRef(false);
 
@@ -44,7 +53,26 @@ export function SuccessScreen({ email }: SuccessScreenProps) {
           rapidement.
         </p>
 
-        <div className="rounded-box border border-primary/30 bg-primary/5 p-6 mb-6 text-left">
+        {!emailSent && (
+          <div className="rounded-box border border-warning/40 bg-warning/10 p-5 mb-6 text-left">
+            <p className="flex items-center gap-2 font-semibold text-base-content mb-2">
+              <MailWarning className="w-5 h-5 text-warning shrink-0" aria-hidden="true" />
+              L&apos;email n&apos;a pas pu être envoyé
+            </p>
+            <p className="text-sm text-base-content/70">
+              Votre candidature est bien enregistrée, mais l&apos;email contenant
+              votre code de suivi n&apos;est pas parti. Sur la page de suivi,
+              utilisez « J&apos;ai perdu mon code » avec votre adresse pour le
+              recevoir.
+            </p>
+          </div>
+        )}
+
+        <div
+          className={`rounded-box border border-primary/30 bg-primary/5 p-6 mb-6 text-left ${
+            emailSent ? "" : "hidden"
+          }`}
+        >
           <p className="flex items-center gap-2 font-semibold text-secondary mb-2">
             <MailCheck className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
             Consultez votre boîte mail

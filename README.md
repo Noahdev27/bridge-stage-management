@@ -33,8 +33,9 @@ cp .env.example .env
 # 3. Créer le schéma en base
 npm run db:migrate
 
-# 4. Créer un compte RH de test (rh@bridge.test / password123)
-npm run db:seed
+# 4. Base LOCALE de test uniquement : comptes de démonstration
+#    (refusé sans ALLOW_DEMO_SEED=true, jamais sur la base de production)
+ALLOW_DEMO_SEED=true npm run db:seed
 
 # 5. Lancer le serveur de dev
 npm run dev

@@ -6,13 +6,30 @@ import {
 } from "@/shared/constants/domain";
 
 /**
+ * Indique si un fichier se présente comme un PDF.
+ *
+ * Certains navigateurs mobiles transmettent un type vide pour un vrai PDF :
+ * l'extension sert alors d'indice. Le serveur vérifie de toute façon la
+ * signature binaire du fichier (`%PDF-`), qui seule fait foi.
+ */
+export function looksLikePdf(name: string, type: string): boolean {
+  return (
+    type === ACCEPTED_MIME ||
+    (type === "" && name.toLowerCase().endsWith(".pdf"))
+  );
+}
+
+/**
  * Valide un fichier uploadé : PDF uniquement, 2 Mo maximum.
  * À utiliser côté CLIENT (avant envoi) ET côté SERVEUR (dans la Server Action).
  * @returns un message d'erreur en français, ou null si le fichier est valide.
  */
 export function validatePdf(file: File): string | null {
-  if (file.type !== ACCEPTED_MIME) {
+  if (!looksLikePdf(file.name, file.type)) {
     return "Seuls les fichiers PDF sont acceptés.";
+  }
+  if (file.size === 0) {
+    return "Ce fichier est vide.";
   }
   if (file.size > MAX_FILE_SIZE) {
     return "Le fichier dépasse la taille maximale de 2 Mo.";

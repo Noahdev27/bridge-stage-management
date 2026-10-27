@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { InternshipType } from "@prisma/client";
+import type { Department, InternshipType } from "@prisma/client";
 import {
   UserRound,
   GraduationCap,
@@ -11,8 +11,9 @@ import {
   ArrowLeft,
   ArrowRight,
   Send,
+  Briefcase,
 } from "lucide-react";
-import { submitCandidature } from "../actions";
+import { prepareCandidatureUpload, submitCandidature } from "../actions";
 import { step1InfosSchema, step2ParcoursSchema } from "../schema";
 import type { Step1InfosInput, Step2ParcoursInput } from "../schema";
 import { StepInfos } from "./StepInfos";
@@ -23,17 +24,34 @@ import { SuccessScreen } from "./SuccessScreen";
 import { CandidatureFormSkeleton } from "./CandidatureFormSkeleton";
 import { writeConfirmationHandoff } from "../confirmation-handoff";
 import { useToast } from "@/shared/ui/ToastProvider";
-import { REQUIRED_DOCUMENTS } from "@/shared/constants/domain";
+import {
+  DEPARTMENT_LABELS,
+  REQUIRED_DOCUMENTS,
+  TYPE_LABELS,
+} from "@/shared/constants/domain";
+import { SubmissionProgress, type SubmissionStage } from "./SubmissionProgress";
 
 export type CurrentStep = 1 | 2 | 3 | 4;
 
-export function CandidatureForm({ offerId }: { offerId?: string }) {
+/** Offre à laquelle le candidat répond (absente pour une candidature spontanée). */
+export type OfferSummary = {
+  id: string;
+  title: string;
+  department: Department;
+  type: InternshipType;
+  durationMonths: number;
+};
+
+export function CandidatureForm({ offer }: { offer?: OfferSummary | null }) {
   // État du formulaire multi-étapes
   const [currentStep, setCurrentStep] = useState<CurrentStep>(1);
 
   // État des données
   const [step1Data, setStep1Data] = useState<Partial<Step1InfosInput>>({});
-  const [step2Data, setStep2Data] = useState<Partial<Step2ParcoursInput>>({});
+  // Une offre fixe le type de stage : il est prérempli et verrouillé.
+  const [step2Data, setStep2Data] = useState<Partial<Step2ParcoursInput>>(
+    offer ? { internshipType: offer.type } : {}
+  );
   const [uploadedFiles, setUploadedFiles] = useState<Map<string, File>>(
     new Map()
   );
@@ -61,6 +79,11 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
   // Repli si sessionStorage est indisponible : la confirmation reste affichée
   // ici plutôt que de rebondir sur une page qui renverrait au formulaire.
   const [showInlineConfirmation, setShowInlineConfirmation] = useState(false);
+  const [inlineEmailSent, setInlineEmailSent] = useState(true);
+  // Avancement visible de l'envoi : sur une connexion mobile lente, déposer
+  // 6 PDF prend du temps, et un écran figé incite à recharger la page.
+  const [stage, setStage] = useState<SubmissionStage | null>(null);
+  const [consent, setConsent] = useState(false);
 
   // La page de confirmation est préchargée pendant que le candidat remplit le
   // formulaire : à l'envoi, la transition est immédiate.
@@ -68,44 +91,37 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
     router.prefetch("/candidature/confirmation");
   }, [router]);
 
-  // Gestion du changement de champ (étape 1)
+  // Gestion des changements de champ.
+  //
+  // Mises à jour fonctionnelles (`prev => …`) : le bouton « Me localiser »
+  // écrit la latitude puis la longitude dans le même rappel. En repartant
+  // d'une copie figée de l'état, la seconde écriture effaçait la première, et
+  // la position n'était jamais enregistrée.
   const handleStep1Change = (field: keyof Step1InfosInput, value: string) => {
-    const newData = { ...step1Data, [field]: value };
-    setStep1Data(newData);
-    
-    // Seulement afficher l'erreur pour ce champ spécifique
-    if (step1Errors[field]) {
-      // Valider juste ce champ pour nettoyer le message d'erreur si c'est bon
-      const testData = { ...step1Data, [field]: value };
-      const result = step1InfosSchema.safeParse(testData);
-      if (result.success || !result.error.issues.some(issue => issue.path[0] === field)) {
-        // Nettoyer l'erreur pour ce champ
-        const newErrors = { ...step1Errors };
-        delete newErrors[field];
-        setStep1Errors(newErrors);
-      }
+    setStep1Data((prev) => ({ ...prev, [field]: value }));
+
+    // L'erreur affichée disparaît dès que le champ devient valide.
+    if (step1Errors[field] && step1InfosSchema.shape[field].safeParse(value).success) {
+      setStep1Errors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
     }
   };
 
-  // Gestion du changement de champ (étape 2)
   const handleStep2Change = (
     field: keyof Step2ParcoursInput,
     value: string | boolean
   ) => {
-    const newData = { ...step2Data, [field]: value };
-    setStep2Data(newData);
-    
-    // Seulement afficher l'erreur pour ce champ spécifique
-    if (step2Errors[field]) {
-      // Valider juste ce champ pour nettoyer le message d'erreur si c'est bon
-      const testData = { ...step2Data, [field]: value };
-      const result = step2ParcoursSchema.safeParse(testData);
-      if (result.success || !result.error.issues.some(issue => issue.path[0] === field)) {
-        // Nettoyer l'erreur pour ce champ
-        const newErrors = { ...step2Errors };
-        delete newErrors[field];
-        setStep2Errors(newErrors);
-      }
+    setStep2Data((prev) => ({ ...prev, [field]: value }));
+
+    if (step2Errors[field] && step2ParcoursSchema.shape[field].safeParse(value).success) {
+      setStep2Errors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
     }
   };
 
@@ -133,6 +149,12 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
         errors[issue.path[0] as string] = issue.message;
       });
       setStep2Errors(errors);
+      return false;
+    }
+    if (offer && Number(step2Data.duration) < offer.durationMonths) {
+      setStep2Errors({
+        duration: `Cette offre demande une durée d'au moins ${offer.durationMonths} mois.`,
+      });
       return false;
     }
     setStep2Errors({});
@@ -182,82 +204,157 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!formRef.current) return;
     // Chaque envoi crée un dossier distinct côté serveur, et l'attente des
-    // uploads incite à recliquer : on verrouille jusqu'au retour de l'action.
+    // dépôts incite à recliquer : on verrouille jusqu'au retour de l'action.
     if (isPending || phase === "sent") return;
 
-    // Créer un FormData avec les données de toutes les étapes
-    const formData = new FormData(formRef.current);
+    const internshipType = step2Data.internshipType as InternshipType | undefined;
+    if (!internshipType) return;
 
-    // Ajouter les données step1
-    Object.entries(step1Data).forEach(([key, value]) => {
-      formData.set(key, String(value));
-    });
-
-    // Ajouter les données step2
-    Object.entries(step2Data).forEach(([key, value]) => {
-      formData.set(
-        key,
-        typeof value === "boolean" ? (value ? "true" : "false") : String(value)
-      );
-    });
-
-    // Ajouter les fichiers
-    uploadedFiles.forEach((file, label) => {
-      const key = `documents_${label.replace(/\s+/g, "_")}`;
-      formData.append(key, file);
-    });
-
-    if (offerId) {
-      formData.set("offerId", offerId);
+    const files = REQUIRED_DOCUMENTS[internshipType].map((label) => ({
+      label,
+      file: uploadedFiles.get(label),
+    }));
+    if (files.some((f) => !f.file)) return;
+    if (!consent) {
+      showToast({
+        type: "error",
+        message: "Veuillez accepter le traitement de vos données pour envoyer votre dossier.",
+      });
+      return;
     }
 
+    const fields: Record<string, unknown> = {
+      ...step1Data,
+      ...step2Data,
+      offerId: offer?.id,
+      consent,
+    };
+
+    const fail = (message: string) => {
+      setStage(null);
+      showToast({ type: "error", message });
+    };
+
     startTransition(async () => {
-      const result = await submitCandidature({}, formData);
-
-      // Le code de suivi renvoyé par l'action n'est plus lu ici : il ne part
-      // que par email. On ne teste donc que l'issue de l'envoi.
-      if (result.error || !result.success) {
-        // L'échec rouvre le bouton : le candidat doit pouvoir réessayer.
-        showToast({
-          type: "error",
-          message: result.error ?? "Erreur serveur. Veuillez réessayer.",
+      try {
+        // 1. Ouverture des emplacements de dépôt.
+        setStage({ kind: "prepare" });
+        const prepared = await prepareCandidatureUpload({
+          internshipType,
+          files: files.map(({ label, file }) => ({
+            label,
+            name: file!.name,
+            size: file!.size,
+            type: file!.type,
+          })),
         });
-        return;
+        if (prepared.error || !prepared.uploadId || !prepared.slots) {
+          return fail(prepared.error ?? "Impossible de préparer l'envoi.");
+        }
+
+        // 2. Dépôt direct de chaque PDF dans le stockage, un à la fois pour
+        //    afficher une progression lisible et ménager les connexions lentes.
+        for (const [index, slot] of prepared.slots.entries()) {
+          setStage({
+            kind: "upload",
+            current: index + 1,
+            total: prepared.slots.length,
+            label: slot.label,
+          });
+          const file = uploadedFiles.get(slot.label);
+          if (!file) return fail(`${slot.label} : fichier introuvable.`);
+
+          const response = await fetch(slot.signedUrl, {
+            method: "PUT",
+            headers: {
+              "content-type": "application/pdf",
+              // Autorise un nouvel essai sur le même emplacement.
+              "x-upsert": "true",
+            },
+            body: file,
+          });
+          if (!response.ok) {
+            return fail(
+              `L'envoi de « ${slot.label} » a échoué. Vérifiez votre connexion et réessayez.`
+            );
+          }
+        }
+
+        // 3. Création du dossier à partir des fichiers déposés.
+        setStage({ kind: "save" });
+        const result = await submitCandidature({
+          uploadId: prepared.uploadId,
+          fields,
+        });
+
+        if (result.error || !result.success) {
+          return fail(result.error ?? "Erreur serveur. Veuillez réessayer.");
+        }
+
+        setPhase("sent");
+        const emailSent = result.emailSent !== false;
+
+        const stored = writeConfirmationHandoff({
+          submitted: true,
+          email: step1Data.email,
+          emailSent,
+        });
+
+        if (!stored) {
+          setInlineEmailSent(emailSent);
+          setShowInlineConfirmation(true);
+          return;
+        }
+
+        // On quitte /candidature pour une page dédiée : un F5 ou un retour
+        // arrière ne retombe alors jamais sur le formulaire encore rempli.
+        router.replace("/candidature/confirmation");
+      } catch (error) {
+        // Coupure réseau, serveur injoignable… : sans ce filet, l'erreur
+        // remontait jusqu'à l'écran d'erreur générique de l'application.
+        console.error("[candidature] Échec de l'envoi :", error);
+        fail(
+          "La connexion a été interrompue pendant l'envoi. Vos informations sont conservées : réessayez."
+        );
       }
-
-      setPhase("sent");
-
-      const stored = writeConfirmationHandoff({
-        submitted: true,
-        email: step1Data.email,
-      });
-
-      if (!stored) {
-        setShowInlineConfirmation(true);
-        return;
-      }
-
-      // On quitte /candidature pour une page dédiée : un F5 ou un retour
-      // arrière ne retombe alors jamais sur le formulaire encore rempli.
-      router.replace("/candidature/confirmation");
     });
   };
 
   // sessionStorage indisponible : la confirmation reste affichée sur place.
   if (showInlineConfirmation) {
-    return <SuccessScreen email={step1Data.email} />;
+    return <SuccessScreen email={step1Data.email} emailSent={inlineEmailSent} />;
   }
 
   // On garde le squelette jusqu'à ce que la redirection ait effectivement lieu :
   // sans cela, le formulaire réapparaîtrait brièvement après un envoi réussi.
-  if (isPending || phase === "sent") {
+  if (phase === "sent") {
     return <CandidatureFormSkeleton />;
+  }
+
+  if (isPending && stage) {
+    return <SubmissionProgress stage={stage} />;
   }
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="max-w-2xl mx-auto">
+      {offer && (
+        <div className="mb-8 flex items-start gap-3 rounded-box border border-primary/30 bg-primary/5 p-4">
+          <Briefcase className="w-5 h-5 mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+              Vous postulez à l&apos;offre
+            </p>
+            <p className="font-bold text-secondary">{offer.title}</p>
+            <p className="text-sm text-base-content/60">
+              {DEPARTMENT_LABELS[offer.department]} · Stage{" "}
+              {TYPE_LABELS[offer.type].toLowerCase()} · {offer.durationMonths} mois
+              minimum
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Indicateur de progression */}
       <div className="mb-8">
         <div className="flex justify-between mb-4">
@@ -316,7 +413,7 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
           {currentStep === 2 &&
             "Parlez-nous de votre formation et du stage souhaité."}
           {currentStep === 3 &&
-            "Uploadez les documents requis pour votre candidature."}
+            "Ajoutez les documents requis pour votre candidature."}
           {currentStep === 4 &&
             "Vérifiez vos informations avant d'envoyer."}
         </p>
@@ -339,6 +436,8 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
             data={step2Data}
             onChange={handleStep2Change}
             errors={step2Errors}
+            lockedType={offer?.type}
+            offerMinDuration={offer?.durationMonths}
           />
         )}
 
@@ -357,6 +456,8 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
             step1={step1Data}
             step2={step2Data}
             uploadedFilesCount={uploadedFiles.size}
+            consent={consent}
+            onConsentChange={setConsent}
           />
         )}
       </div>
@@ -385,7 +486,7 @@ export function CandidatureForm({ offerId }: { offerId?: string }) {
         ) : (
           <button
             type="submit"
-            disabled={!isDossierComplete || isPending}
+            disabled={!isDossierComplete || !consent || isPending}
             className="btn btn-success flex-1 gap-2"
           >
             <Send className="w-4 h-4" aria-hidden="true" />

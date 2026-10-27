@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { CandidatureForm } from "@/features/candidature/components/CandidatureForm";
 import { CandidatureFormSkeleton } from "@/features/candidature/components/CandidatureFormSkeleton";
+import { getOfferById } from "@/features/offres/queries";
 
 export const metadata = {
   title: "Candidature - Bridge Stage Management",
@@ -19,7 +20,24 @@ async function CandidatureFormLoader({
   searchParams: Promise<{ offerId?: string }>;
 }) {
   const { offerId } = await searchParams;
-  return <CandidatureForm offerId={offerId} />;
+  // Seule une offre publiée est retenue : un lien vers une offre retirée
+  // retombe sur une candidature spontanée plutôt que sur une erreur.
+  const offer = offerId ? await getOfferById(offerId) : null;
+  return (
+    <CandidatureForm
+      offer={
+        offer
+          ? {
+              id: offer.id,
+              title: offer.title,
+              department: offer.department,
+              type: offer.type,
+              durationMonths: offer.durationMonths,
+            }
+          : null
+      }
+    />
+  );
 }
 
 export default function CandidaturePage({

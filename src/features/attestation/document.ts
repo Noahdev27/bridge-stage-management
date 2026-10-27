@@ -51,8 +51,12 @@ function esc(value: string): string {
 export type AttestationRenderOptions = {
   /** Déclenche la boîte d'impression à l'ouverture. */
   autoPrint?: boolean;
-  /** Code de suivi rappelé en pied de document pour la vérification. */
+  /** Code de vérification public, imprimé en pied de document. */
   verificationCode: string;
+  /** Adresse de la page de vérification, encodée dans le QR code. */
+  verificationUrl: string;
+  /** QR code de `verificationUrl`, en SVG. */
+  verificationQrSvg: string;
   reference: string;
   issuedAt: Date;
   /**
@@ -134,6 +138,8 @@ export function renderAttestationHtml(
   .marques .tampon{right:0;bottom:0;max-height:35mm;max-width:38mm;mix-blend-mode:multiply;}
   .verif{margin-top:14px;padding-top:10px;border-top:1px solid #e3edf2;display:flex;
          gap:12px;align-items:center;font-size:8pt;color:var(--gris);}
+  .verif .qr{width:20mm;height:20mm;flex-shrink:0;}
+  .verif .qr svg{width:100%;height:100%;display:block;}
   @page{size:A4;margin:0;}
   @media print{body{background:#fff;}.page{margin:0;}}
 </style>
@@ -170,9 +176,11 @@ export function renderAttestationHtml(
     </div>
 
     <div class="verif">
-      <div>Document généré par la plateforme Bridge. Authenticité vérifiable
-        auprès de la DRH avec la référence ${esc(options.reference)} et le code
-        de suivi <strong>${esc(options.verificationCode)}</strong>.</div>
+      <div class="qr">${options.verificationQrSvg}</div>
+      <div>Document généré par la plateforme Bridge. Authenticité vérifiable en
+        scannant ce code ou sur <strong>${esc(options.verificationUrl.replace(/^https?:\/\//, "").split("?")[0])}</strong>
+        avec le code <strong>${esc(options.verificationCode)}</strong>
+        (référence ${esc(options.reference)}).</div>
     </div>
   </div>
   <img class="pied" src="${LETTERHEAD_BOTTOM}" alt="">

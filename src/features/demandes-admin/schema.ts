@@ -15,6 +15,10 @@ export const candidatureListFiltersSchema = z
       .optional(),
     tutorId: z.string().min(1).optional(),
     reportRequired: z.enum(["true", "false"]).optional(),
+    offerId: z.string().min(1).max(64).optional(),
+    /** Recherche libre : nom, prénom, email ou code de suivi. */
+    q: z.string().trim().min(1).max(100).optional(),
+    page: z.coerce.number().int().min(1).max(10_000).optional(),
   })
   .refine((data) => !data.from || !data.to || data.from <= data.to, {
     message: "La date de début doit être antérieure ou égale à la date de fin.",
@@ -37,6 +41,9 @@ export function parseCandidatureListFilters(
       raw.reportRequired === "true" || raw.reportRequired === "false"
         ? raw.reportRequired
         : undefined,
+    offerId: raw.offerId || undefined,
+    q: raw.q?.trim() || undefined,
+    page: raw.page || undefined,
   });
 
   if (!parsed.success) {

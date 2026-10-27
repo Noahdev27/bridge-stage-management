@@ -7,6 +7,7 @@ import { STATUS_LABELS, TYPE_LABELS } from "@/shared/constants/domain";
 import SubmissionConfirmationEmail from "@/features/notifications/templates/SubmissionConfirmationEmail";
 import StatusChangedEmail from "@/features/notifications/templates/StatusChangedEmail";
 import TutorAssignedEmail from "@/features/notifications/templates/TutorAssignedEmail";
+import NewApplicationEmail from "@/features/notifications/templates/NewApplicationEmail";
 import EmailVerificationEmail from "@/features/notifications/templates/EmailVerificationEmail";
 import PasswordResetEmail from "@/features/notifications/templates/PasswordResetEmail";
 import TrackingCodeReminderEmail, {
@@ -23,19 +24,31 @@ import TrackingCodeReminderEmail, {
 
 // Envoi tolérant aux pannes : une notification qui échoue ne doit jamais
 // bloquer le parcours candidat ni le traitement RH.
-const safeSend = async (params: { to: string; subject: string; html: string }) => {
+// Renvoie `false` en cas d'échec, pour les rares appelants qui doivent prévenir
+// l'utilisateur (le code de suivi n'est transmis que par email).
+const safeSend = async (params: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<boolean> => {
   try {
     await sendEmail(params);
+    return true;
   } catch (error) {
     console.error("Notification email échouée (non bloquant) :", error);
+    return false;
   }
 };
 
-export const notifySubmission = async (email: string, name: string, code: string) => {
+export const notifySubmission = async (
+  email: string,
+  name: string,
+  code: string
+): Promise<boolean> => {
   const html = await render(
     <SubmissionConfirmationEmail candidateName={name} trackingCode={code} />
   );
-  await safeSend({
+  return safeSend({
     to: email,
     subject: "Confirmation de candidature - Bridge",
     html,
@@ -168,4 +181,43 @@ export const notifyTutorAssignment = async ({
     subject: `Nouveau stagiaire à encadrer : ${candidateName}`,
     html,
   });
+};
+
+/**
+ * Prévient l'équipe RH d'une nouvelle candidature.
+ *
+ * Un message par destinataire plutôt qu'un envoi groupé : les adresses de
+ * l'équipe ne doivent pas apparaître les unes aux autres.
+ */
+export const notifyNewApplication = async ({
+  recipients,
+  candidateName,
+  internshipType,
+  offerTitle,
+  dossierUrl,
+}: {
+  recipients: string[];
+  candidateName: string;
+  internshipType: InternshipType;
+  offerTitle: string | null;
+  dossierUrl: string;
+}) => {
+  if (recipients.length === 0) return;
+  const html = await render(
+    <NewApplicationEmail
+      candidateName={candidateName}
+      internshipTypeLabel={TYPE_LABELS[internshipType]}
+      offerTitle={offerTitle}
+      dossierUrl={dossierUrl}
+    />
+  );
+  await Promise.all(
+    recipients.map((to) =>
+      safeSend({
+        to,
+        subject: `Nouvelle candidature : ${candidateName}`,
+        html,
+      })
+    )
+  );
 };

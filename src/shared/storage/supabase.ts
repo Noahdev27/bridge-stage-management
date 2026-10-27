@@ -192,3 +192,105 @@ export async function deleteRequestDocumentsFolder(
 
   await deleteStoragePaths(paths);
 }
+
+/** Emplacement d'envoi direct : le navigateur y dépose le fichier lui-même. */
+export type UploadSlot = {
+  storagePath: string;
+  signedUrl: string;
+};
+
+/**
+ * Crée une adresse d'envoi signée, à usage unique, pour un chemin donné.
+ *
+ * Les fichiers des candidats ne transitent plus par le serveur de
+ * l'application : Vercel refuse toute requête de plus de 4,5 Mo, alors qu'un
+ * dossier complet peut atteindre 12 Mo. Le navigateur envoie chaque PDF
+ * directement à Supabase, et le serveur ne reçoit que les chemins.
+ */
+export async function createUploadSlot(storagePath: string): Promise<UploadSlot> {
+  const { data, error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .createSignedUploadUrl(storagePath);
+
+  if (error || !data) {
+    throw new Error(`Échec de création de l'emplacement d'envoi : ${error?.message}`);
+  }
+
+  return { storagePath, signedUrl: data.signedUrl };
+}
+
+export type StoredFileInfo = {
+  size: number;
+  /** Le fichier commence par la signature binaire d'un PDF (`%PDF-`). */
+  isPdf: boolean;
+};
+
+/**
+ * Inspecte un fichier déposé par le navigateur.
+ *
+ * L'envoi direct échappe aux contrôles du serveur : taille et nature réelle
+ * du fichier sont donc revérifiées ici, à partir de son contenu et non de ce
+ * que le navigateur a déclaré.
+ *
+ * Seuls les 5 premiers octets sont lus (requête partielle) : télécharger les
+ * 6 PDF d'un dossier en entier prenait plusieurs secondes chacun.
+ * @returns `null` si le fichier n'existe pas.
+ */
+export async function inspectStoredFile(
+  storagePath: string
+): Promise<StoredFileInfo | null> {
+  const bucket = supabase.storage.from(DOCUMENTS_BUCKET);
+  const [info, signed] = await Promise.all([
+    bucket.info(storagePath),
+    bucket.createSignedUrl(storagePath, 60),
+  ]);
+
+  if (info.error || !info.data || signed.error || !signed.data) return null;
+
+  const response = await fetch(signed.data.signedUrl, {
+    headers: { Range: "bytes=0-4" },
+  });
+  if (!response.ok) return null;
+
+  const head = new Uint8Array(await response.arrayBuffer()).slice(0, 5);
+  const signature = String.fromCharCode(...head);
+
+  return { size: info.data.size ?? 0, isPdf: signature === "%PDF-" };
+}
+
+/**
+ * Supprime les dossiers d'envoi temporaires abandonnés.
+ *
+ * Un candidat qui quitte le formulaire après l'envoi des fichiers mais avant
+ * la validation laisse ses PDF dans `temp/`. Le cron quotidien les retire une
+ * fois passé le délai de grâce.
+ * @returns le nombre de fichiers supprimés.
+ */
+export async function purgeStaleUploads(maxAgeHours = 24): Promise<number> {
+  const cutoff = Date.now() - maxAgeHours * 60 * 60 * 1000;
+  const { data: folders, error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .list("temp", { limit: 1000 });
+
+  if (error || !folders) return 0;
+
+  const stale: string[] = [];
+  for (const folder of folders) {
+    const { data: files } = await supabase.storage
+      .from(DOCUMENTS_BUCKET)
+      .list(`temp/${folder.name}`, { limit: 100 });
+
+    for (const file of files ?? []) {
+      const created = file.created_at ? Date.parse(file.created_at) : 0;
+      if (created < cutoff) stale.push(`temp/${folder.name}/${file.name}`);
+    }
+  }
+
+  await deleteStoragePaths(stale);
+  return stale.length;
+}
+
+/** Chemin de stockage d'un document, dérivé de son libellé. */
+export function documentPathFor(folder: string, label: string): string {
+  return buildStoragePath(folder, label, "pdf");
+}

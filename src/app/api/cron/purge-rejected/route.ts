@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { runRejectedPurge } from "@/features/demandes-admin/purge";
 import { SYSTEM_ACTOR, recordAudit } from "@/shared/audit/audit";
+import { purgeStaleUploads } from "@/shared/storage/supabase";
+import { purgeExpiredRateLimits } from "@/shared/security/rate-limit";
 
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -24,9 +26,28 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Entretien : dépôts de dossiers abandonnés en cours de route, et
+    // compteurs de limitation dont la fenêtre est close. Un échec ici ne doit
+    // pas faire échouer la purge RGPD, déjà effectuée.
+    const [staleUploads, expiredLimits] = await Promise.all([
+      purgeStaleUploads().catch((error) => {
+        console.error("[cron] Nettoyage des dépôts abandonnés:", error);
+        return 0;
+      }),
+      purgeExpiredRateLimits().catch((error) => {
+        console.error("[cron] Nettoyage des compteurs:", error);
+        return 0;
+      }),
+    ]);
+
     revalidatePath("/admin");
 
-    return NextResponse.json({ success: true, purgedCount });
+    return NextResponse.json({
+      success: true,
+      purgedCount,
+      staleUploads,
+      expiredLimits,
+    });
   } catch (error) {
     console.error("[cron] Erreur exécution purge RGPD:", error);
     return NextResponse.json(

@@ -6,6 +6,7 @@ import {
   getAttestationRequest,
 } from "@/features/attestation/queries";
 import { loadAttestationBranding } from "@/features/attestation/settings";
+import { buildAttestationVerification } from "@/features/attestation/verification";
 import { recordAudit } from "@/shared/audit/audit";
 
 /**
@@ -74,7 +75,7 @@ export async function GET(
       reference,
       issuedAt,
       branding,
-      verificationCode: internship.trackingCode,
+      ...(await buildAttestationVerification(internship.id)),
       autoPrint: request.nextUrl.searchParams.get("print") === "1",
     });
 

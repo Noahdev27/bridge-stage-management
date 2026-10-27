@@ -4,6 +4,7 @@ import { AuthorizationError, requireCandidate } from "@/shared/auth/guards";
 import { renderAttestationHtml } from "@/features/attestation/document";
 import { getCandidateAttestation } from "@/features/attestation/queries";
 import { loadAttestationBranding } from "@/features/attestation/settings";
+import { buildAttestationVerification } from "@/features/attestation/verification";
 
 /**
  * Téléchargement de l'attestation par le stagiaire lui-même.
@@ -57,7 +58,7 @@ export async function GET(
       reference: internship.attestationRef,
       issuedAt: internship.attestationIssuedAt ?? internship.updatedAt,
       branding,
-      verificationCode: internship.trackingCode,
+      ...(await buildAttestationVerification(internship.id)),
       autoPrint: request.nextUrl.searchParams.get("print") === "1",
     });
 

@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { AuthorizationError, MANAGER_ROLES, requireStaff } from "@/shared/auth/guards";
 import {
   countRejectedEligibleForPurge,
+  countUrgentCandidatures,
   getCandidatures,
+  getOfferOptions,
   getMonthlyStatsBreakdown,
   getRequestStats,
   getStatsAvailableYears,
@@ -16,7 +18,14 @@ import { PurgeRejectedPanel } from "@/features/demandes-admin/components/PurgeRe
 import { daysUntil, isStartDateAlert } from "@/features/demandes-admin/deadline";
 import { StatusBadge } from "@/shared/ui/StatusBadge";
 import Link from "next/link";
-import { GraduationCap, Briefcase, ArrowRight, TriangleAlert } from "lucide-react";
+import {
+  GraduationCap,
+  Briefcase,
+  ArrowRight,
+  TriangleAlert,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import {
   REJECTED_PURGE_MONTHS,
   START_DATE_ALERT_DAYS,
@@ -32,7 +41,21 @@ interface AdminPageProps {
     to?: string;
     tutorId?: string;
     reportRequired?: string;
+    offerId?: string;
+    q?: string;
+    page?: string;
   }>;
+}
+
+/** Lien vers une autre page de la liste, en conservant tous les filtres. */
+function pageHref(params: Record<string, string | undefined>, page: number): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value && key !== "page") query.set(key, value);
+  }
+  if (page > 1) query.set("page", String(page));
+  const qs = query.toString();
+  return qs ? `/admin?${qs}` : "/admin";
 }
 
 function parseYear(value: string | undefined, fallback: number): number {
@@ -76,7 +99,16 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   const listFilters = parseCandidatureListFilters(params);
 
-  const [candidatures, stats, monthlyBreakdown, years, purgeEligibleCount, tutors] =
+  const [
+    list,
+    stats,
+    monthlyBreakdown,
+    years,
+    purgeEligibleCount,
+    tutors,
+    urgentCount,
+    offers,
+  ] =
     await Promise.all([
       getCandidatures(listFilters, viewer),
       getRequestStats(year, month),
@@ -86,11 +118,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         ? countRejectedEligibleForPurge(REJECTED_PURGE_MONTHS)
         : Promise.resolve(0),
       getTutors(),
+      countUrgentCandidatures(START_DATE_ALERT_DAYS, viewer),
+      getOfferOptions(),
     ]);
 
-  const urgentCount = candidatures.filter((cand) =>
-    isStartDateAlert(cand.status, cand.startDate, START_DATE_ALERT_DAYS)
-  ).length;
+  const candidatures = list.items;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -130,14 +162,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             </span>
           )}
         </div>
-        <CandidatureFilters tutors={tutors} />
+        <CandidatureFilters tutors={tutors} offers={offers} />
 
         <div className="overflow-x-auto border border-base-300 rounded-xl bg-base-100 shadow-sm">
           <table className="table table-zebra w-full">
             <thead>
               <tr className="bg-base-200/50">
                 <th>Candidat</th>
-                <th>Type de Stage</th>
+                <th>Stage</th>
                 <th>Date de Soumission</th>
                 <th>Début souhaité</th>
                 <th>Statut</th>
@@ -195,6 +227,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                             ? "Académique"
                             : "Professionnel"}
                         </span>
+                        <span
+                          className={`block text-xs mt-0.5 max-w-56 truncate ${
+                            cand.offerTitle ? "text-primary" : "text-base-content/50"
+                          }`}
+                          title={cand.offerTitle ?? undefined}
+                        >
+                          {cand.offerTitle ?? "Candidature spontanée"}
+                        </span>
                       </td>
                       <td className="text-sm text-base-content/70">
                         {new Date(cand.createdAt).toLocaleDateString("fr-FR", {
@@ -228,6 +268,39 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-base-content/60">
+          <span>
+            {list.total} candidature{list.total > 1 ? "s" : ""}
+            {list.pageCount > 1 && ` — page ${list.page} sur ${list.pageCount}`}
+          </span>
+          {list.pageCount > 1 && (
+            <div className="join">
+              {list.page > 1 ? (
+                <Link href={pageHref(params, list.page - 1)} className="join-item btn btn-sm gap-1">
+                  <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+                  Précédente
+                </Link>
+              ) : (
+                <span className="join-item btn btn-sm btn-disabled gap-1">
+                  <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+                  Précédente
+                </span>
+              )}
+              {list.page < list.pageCount ? (
+                <Link href={pageHref(params, list.page + 1)} className="join-item btn btn-sm gap-1">
+                  Suivante
+                  <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                </Link>
+              ) : (
+                <span className="join-item btn btn-sm btn-disabled gap-1">
+                  Suivante
+                  <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
