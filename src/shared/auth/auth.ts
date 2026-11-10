@@ -9,6 +9,7 @@ import {
   consumeRateLimit,
   isRateLimited,
 } from "@/shared/security/rate-limit";
+import { buildSessionRefresh, readSessionRefresh } from "./session-version";
 
 /**
  * Trop d'échecs récents : la connexion est refusée sans même comparer le mot
@@ -41,7 +42,7 @@ const STAFF_ROLES = new Set(["ADMIN", "RH", "TUTOR"]);
  * Authentification par identifiants (email + mot de passe) avec rôles.
  * Stratégie JWT (obligatoire avec le provider Credentials).
  */
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/admin/login" },
   providers: [
@@ -122,15 +123,52 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           );
         }
 
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          sessionVersion: user.sessionVersion,
+        };
       },
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = user.role;
         token.userId = user.id;
+        token.sessionVersion = user.sessionVersion ?? 0;
+        return token;
+      }
+
+      // Chaque lecture de session côté serveur revérifie le compte : un mot de
+      // passe changé (version incrémentée) ou un compte supprimé met fin aux
+      // sessions ouvertes, sans attendre l'expiration du JWT.
+      const userId = token.userId ?? token.sub;
+      if (!userId) return token;
+
+      try {
+        const account = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { sessionVersion: true },
+        });
+        if (!account) return null;
+
+        if (trigger === "update") {
+          const refreshed = readSessionRefresh(session, userId);
+          if (refreshed !== null && refreshed === account.sessionVersion) {
+            token.sessionVersion = refreshed;
+          }
+        }
+
+        // Un JWT émis avant l'ajout de la version n'en porte pas : il vaut 0,
+        // comme la version initiale de tout compte.
+        if ((token.sessionVersion ?? 0) !== account.sessionVersion) return null;
+      } catch (error) {
+        // Base momentanément injoignable : on garde la session plutôt que de
+        // déconnecter tout le monde. Les gardes refont leurs propres lectures.
+        console.error("[auth] Vérification de session impossible :", error);
       }
       return token;
     },
@@ -145,3 +183,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+/**
+ * Garde ouverte la session de la personne qui vient de changer son mot de
+ * passe : ses autres sessions, elles, sont refusées à leur prochaine lecture.
+ */
+export async function keepCurrentSession(userId: string, version: number): Promise<void> {
+  try {
+    await unstable_update({ sessionRefresh: buildSessionRefresh(userId, version) });
+  } catch (error) {
+    // Au pire, la personne devra se reconnecter : le changement reste acquis.
+    console.error("[auth] Mise à jour de la session impossible :", error);
+  }
+}

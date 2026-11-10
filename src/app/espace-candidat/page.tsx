@@ -2,9 +2,12 @@ import { auth, signOut } from "@/shared/auth/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
+  changeCandidatePassword,
   getCandidateRequests,
   isCandidateEmailVerified,
 } from "@/features/compte-candidat/actions";
+import { ChangePasswordForm } from "@/features/parametres/components/ChangePasswordForm";
+import { ReplaceDocuments } from "@/features/compte-candidat/components/ReplaceDocuments";
 import { STATUS_LABELS, TYPE_LABELS } from "@/shared/constants/domain";
 import { formatTrackingCode } from "@/shared/tracking/tracking-code";
 import {
@@ -148,7 +151,13 @@ export default async function EspaceCandidatPage() {
                         document. Un dossier accepté mais non encore attesté
                         n'affiche rien : la route le refuserait de toute façon. */}
                     {(req.status === "PENDING" || req.status === "PROCESS") && (
-                      <WithdrawCandidatureButton requestId={req.id} />
+                      <>
+                        <ReplaceDocuments
+                          requestId={req.id}
+                          documents={req.documents}
+                        />
+                        <WithdrawCandidatureButton requestId={req.id} />
+                      </>
                     )}
 
                     {req.attestationRef && (
@@ -202,6 +211,8 @@ export default async function EspaceCandidatPage() {
             )}
           </div>
         </section>
+
+        <ChangePasswordForm action={changeCandidatePassword} />
 
         <DeleteAccountSection />
       </div>

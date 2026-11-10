@@ -163,8 +163,8 @@ export async function getMonthlyStatsBreakdown(year: number): Promise<MonthlySta
 /** Nombre de candidatures par page dans la liste du back-office. */
 export const CANDIDATURES_PAGE_SIZE = 25;
 
-/** Filtres communs à la liste et au compteur, hors pagination. */
-function buildCandidatureWhere(
+/** Filtres communs à la liste, au compteur et à l'export, hors pagination. */
+export function buildCandidatureWhere(
   filters: CandidatureListFilters,
   viewer?: SessionUser
 ): Prisma.InternshipRequestWhereInput {

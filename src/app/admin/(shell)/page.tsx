@@ -25,6 +25,7 @@ import {
   TriangleAlert,
   ChevronLeft,
   ChevronRight,
+  Download,
 } from "lucide-react";
 import {
   REJECTED_PURGE_MONTHS,
@@ -56,6 +57,19 @@ function pageHref(params: Record<string, string | undefined>, page: number): str
   if (page > 1) query.set("page", String(page));
   const qs = query.toString();
   return qs ? `/admin?${qs}` : "/admin";
+}
+
+/**
+ * Lien d'export CSV avec les filtres de la liste. La période des statistiques
+ * (`year`, `month`) et la pagination ne filtrent pas la liste : exclues.
+ */
+function exportHref(params: Record<string, string | undefined>): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value && !["page", "year", "month"].includes(key)) query.set(key, value);
+  }
+  const qs = query.toString();
+  return `/api/admin/candidatures/export${qs ? `?${qs}` : ""}`;
 }
 
 function parseYear(value: string | undefined, fallback: number): number {
@@ -154,13 +168,27 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <h2 className="text-xl font-bold">Liste des candidatures</h2>
-          {urgentCount > 0 && (
-            <span className="badge badge-warning gap-1.5 font-semibold">
-              <TriangleAlert className="w-3.5 h-3.5" aria-hidden="true" />
-              {urgentCount} dossier(s) urgent(s) (≤ {START_DATE_ALERT_DAYS}{" "}
-              jours)
-            </span>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {urgentCount > 0 && (
+              <span className="badge badge-warning gap-1.5 font-semibold">
+                <TriangleAlert className="w-3.5 h-3.5" aria-hidden="true" />
+                {urgentCount} dossier(s) urgent(s) (≤ {START_DATE_ALERT_DAYS}{" "}
+                jours)
+              </span>
+            )}
+            {/* Lien de téléchargement simple, pas de navigation client : la
+                route renvoie un fichier, pas une page. */}
+            {isManager && list.total > 0 && (
+              <a
+                href={exportHref(params)}
+                className="btn btn-outline btn-sm gap-1.5"
+                download
+              >
+                <Download className="w-4 h-4" aria-hidden="true" />
+                Exporter ({list.total}) en Excel
+              </a>
+            )}
+          </div>
         </div>
         <CandidatureFilters tutors={tutors} offers={offers} />
 

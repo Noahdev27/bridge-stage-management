@@ -12,7 +12,7 @@ import {
   requestEvaluationSchema,
   statusUpdateSchema,
 } from "./schema";
-import { runRejectedPurge } from "./purge";
+import { deleteRequestWithFiles, runRejectedPurge } from "./purge";
 import { recordAudit } from "@/shared/audit/audit";
 import { STATUS_LABELS } from "@/shared/constants/domain";
 import type { RequestStatus } from "@prisma/client";
@@ -279,5 +279,49 @@ export async function purgeRejectedApplications(): Promise<AdminActionState> {
     if (error instanceof AuthorizationError) return UNAUTHORIZED;
     console.error("[admin-actions] Erreur lors de la purge RGPD:", error);
     return { error: "Une erreur est survenue lors de la purge des dossiers." };
+  }
+}
+
+/**
+ * Suppression définitive d'un dossier par la RH, quel que soit son statut
+ * (doublon, demande du candidat au titre du RGPD, dossier de test…).
+ *
+ * Mêmes effacements que la purge : données, documents et fichiers. Le journal
+ * ne garde que le statut et la référence d'attestation éventuelle, jamais le
+ * nom ou l'email du candidat.
+ */
+export async function deleteCandidature(requestId: string): Promise<AdminActionState> {
+  try {
+    const actor = await requireManager();
+
+    const request = await prisma.internshipRequest.findUnique({
+      where: { id: requestId },
+      include: { documents: true },
+    });
+    if (!request) {
+      return { error: "Ce dossier n'existe plus." };
+    }
+
+    await deleteRequestWithFiles(request);
+
+    await recordAudit(actor, {
+      action: "request.deleted",
+      summary: `Dossier supprimé définitivement (statut : ${STATUS_LABELS[request.status]})`,
+      targetType: "request",
+      targetId: request.id,
+      metadata: {
+        status: request.status,
+        documents: request.documents.length,
+        ...(request.attestationRef ? { attestationRef: request.attestationRef } : {}),
+      },
+    });
+
+    revalidatePath("/admin");
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof AuthorizationError) return UNAUTHORIZED;
+    console.error(`[admin-actions] Erreur suppression dossier ${requestId}:`, error);
+    return { error: "Impossible de supprimer ce dossier. Veuillez réessayer." };
   }
 }

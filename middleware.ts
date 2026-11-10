@@ -22,10 +22,13 @@ function readToken(request: NextRequest) {
   });
 }
 
+/** Pages du back-office accessibles sans session. */
+const PUBLIC_ADMIN_PATHS = new Set(["/admin/login", "/admin/mot-de-passe-oublie"]);
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
+  if (pathname.startsWith("/admin") && !PUBLIC_ADMIN_PATHS.has(pathname)) {
     const token = await readToken(request);
 
     if (!token) {

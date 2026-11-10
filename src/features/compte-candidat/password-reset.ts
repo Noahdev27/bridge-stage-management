@@ -1,10 +1,14 @@
 import "server-only";
 
+import { after } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/shared/db/prisma";
 import { createRawToken, hashToken } from "@/shared/auth/tokens";
 import { getAppUrl } from "@/shared/config/app-url";
-import { notifyPasswordReset } from "@/features/notifications/send-notification";
+import {
+  notifyPasswordChanged,
+  notifyPasswordReset,
+} from "@/features/notifications/send-notification";
 
 /**
  * Réinitialisation du mot de passe d'un compte candidat par lien envoyé à
@@ -13,10 +17,10 @@ import { notifyPasswordReset } from "@/features/notifications/send-notification"
  * Réservé aux comptes CANDIDATE dont l'adresse est confirmée :
  * — un compte non confirmé n'a jamais prouvé que son titulaire relève
  *   l'adresse ; il passe par « Renvoyer l'email de vérification » ;
- * — les comptes du back-office (ADMIN, RH, TUTOR) sont provisionnés par un
- *   gestionnaire et changent leur mot de passe depuis Paramètres. Leur ouvrir
- *   un point d'entrée public ajouterait une surface d'attaque sur les comptes
- *   les plus sensibles sans besoin réel.
+ * — les comptes du back-office (ADMIN, RH, TUTOR) ont leur propre parcours,
+ *   par code à 6 chiffres à durée et essais limités (voir
+ *   `features/reinitialisation-rh`) : un lien valable une heure serait trop
+ *   permissif pour les comptes qui ouvrent tous les dossiers.
  *
  * Volontairement hors d'un fichier "use server" : ces fonctions manipulent des
  * jetons et ne doivent pas être exposées comme Server Actions.
@@ -117,7 +121,13 @@ export async function consumePasswordReset(
 
   const user = await prisma.user.findUnique({
     where: { passwordResetTokenHash: hashToken(rawToken) },
-    select: { id: true, passwordResetTokenExpiresAt: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      passwordResetTokenExpiresAt: true,
+    },
   });
 
   if (!user) return "invalid";
@@ -135,8 +145,19 @@ export async function consumePasswordReset(
       password: await bcrypt.hash(newPassword, 10),
       passwordResetTokenHash: null,
       passwordResetTokenExpiresAt: null,
+      // Ferme toutes les sessions ouvertes, celle d'un éventuel intrus comprise.
+      sessionVersion: { increment: 1 },
     },
   });
+
+  after(() =>
+    notifyPasswordChanged({
+      to: user.email,
+      name: user.name,
+      role: user.role,
+      method: "reset",
+    })
+  );
 
   return "reset";
 }

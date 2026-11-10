@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { AuthError, CredentialsSignin } from "next-auth";
 import { prisma } from "@/shared/db/prisma";
@@ -16,12 +17,25 @@ import { auth, signIn, signOut, TOO_MANY_ATTEMPTS_CODE } from "@/shared/auth/aut
 import { AuthorizationError, requireCandidate } from "@/shared/auth/guards";
 import { recordAudit } from "@/shared/audit/audit";
 import { deleteRequestWithFiles } from "@/features/demandes-admin/purge";
+import { changeOwnPassword } from "@/features/parametres/password-change";
+import type { ParametresActionState } from "@/features/parametres/actions";
 import {
   RATE_LIMITS,
   consumeRateLimit,
   currentClientIp,
   formatRetryAfter,
 } from "@/shared/security/rate-limit";
+import {
+  createUploadSlot,
+  deleteStoragePaths,
+  documentPathFor,
+  extractStoragePathFromUrl,
+  inspectStoredFile,
+  moveDocument,
+  requestDocumentsFolder,
+} from "@/shared/storage/supabase";
+import { looksLikePdf } from "@/shared/validation/file";
+import { MAX_FILE_SIZE } from "@/shared/constants/domain";
 
 export type CandidateActionState = {
   error?: string;
@@ -293,7 +307,13 @@ export async function getCandidateRequests() {
     where: {
       profile: { email: { equals: session.user.email, mode: "insensitive" } },
     },
-    include: { profile: true },
+    include: {
+      profile: true,
+      documents: {
+        select: { id: true, label: true, createdAt: true },
+        orderBy: { label: "asc" },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -329,6 +349,24 @@ async function requireVerifiedCandidate() {
   });
   if (!account?.emailVerifiedAt) throw new AuthorizationError();
   return candidate;
+}
+
+/** Changement de mot de passe depuis l'espace candidat. */
+export async function changeCandidatePassword(
+  _prev: ParametresActionState,
+  formData: FormData
+): Promise<ParametresActionState> {
+  try {
+    const candidate = await requireVerifiedCandidate();
+    const { state } = await changeOwnPassword(candidate.email, formData);
+    return state;
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return { error: "Accès non autorisé." };
+    }
+    console.error("[compte-candidat] Échec du changement de mot de passe:", error);
+    return { error: "Une erreur est survenue lors du changement de mot de passe." };
+  }
 }
 
 /**
@@ -422,4 +460,183 @@ export async function deleteCandidateAccount(): Promise<CandidateActionState | v
 
   // Hors du try : la redirection de signOut est une exception volontaire.
   await signOut({ redirectTo: "/?compte=supprime" });
+}
+
+/**
+ * Remplacement d'un document après dépôt (mauvais CV, scan illisible…), tant
+ * que la RH n'a pas rendu sa décision. Sans cela, le candidat devait retirer
+ * toute sa candidature et la redéposer.
+ *
+ * Même circuit que le dépôt initial : le navigateur envoie le PDF directement
+ * au stockage (`prepareDocumentReplacement`), puis le serveur le revérifie et
+ * l'installe à la place de l'ancien (`confirmDocumentReplacement`).
+ */
+
+const REPLACEMENT_ID_PATTERN = /^[a-f0-9]{32}$/;
+
+const NOT_REPLACEABLE =
+  "Ce document ne peut plus être remplacé : une décision a déjà été rendue sur la candidature.";
+
+/** Document du candidat connecté, sur une candidature encore modifiable. */
+async function findReplaceableDocument(
+  candidateEmail: string,
+  requestId: unknown,
+  documentId: unknown
+) {
+  if (typeof requestId !== "string" || typeof documentId !== "string") return null;
+  return prisma.document.findFirst({
+    where: {
+      id: documentId,
+      request: {
+        id: requestId,
+        status: { in: [...WITHDRAWABLE] },
+        profile: { email: { equals: candidateEmail, mode: "insensitive" } },
+      },
+    },
+    include: { request: { select: { id: true, createdAt: true } } },
+  });
+}
+
+/**
+ * Chemin de dépôt temporaire, recalculé à l'identique à la confirmation. Le
+ * nom diffère de celui du document en place : le déplacement final ne doit
+ * pas buter sur l'ancien fichier, supprimé seulement une fois le nouveau
+ * installé.
+ */
+function replacementPath(uploadId: string, label: string): string {
+  return documentPathFor(`temp/${uploadId}`, `${label} ${uploadId.slice(0, 8)}`);
+}
+
+export type PrepareReplacementResult = {
+  error?: string;
+  uploadId?: string;
+  signedUrl?: string;
+};
+
+export async function prepareDocumentReplacement(input: {
+  requestId: string;
+  documentId: string;
+  file: { name: string; size: number; type: string };
+}): Promise<PrepareReplacementResult> {
+  try {
+    const candidate = await requireVerifiedCandidate();
+
+    const limit = await consumeRateLimit(
+      RATE_LIMITS.candidaturePerIp,
+      await currentClientIp()
+    );
+    if (!limit.allowed) {
+      return {
+        error: `Trop d'envois depuis votre connexion. Réessayez ${formatRetryAfter(limit.retryAfterSeconds)}.`,
+      };
+    }
+
+    const document = await findReplaceableDocument(
+      candidate.email,
+      input?.requestId,
+      input?.documentId
+    );
+    if (!document) return { error: NOT_REPLACEABLE };
+
+    // Contrôle sur la description ; le contenu réel est revérifié après dépôt.
+    const file = input.file ?? { name: "", size: 0, type: "" };
+    if (!looksLikePdf(String(file.name), String(file.type))) {
+      return { error: "Seuls les fichiers PDF sont acceptés." };
+    }
+    if (!(Number(file.size) > 0 && Number(file.size) <= MAX_FILE_SIZE)) {
+      return { error: "Le fichier doit faire au plus 2 Mo." };
+    }
+
+    const uploadId = randomBytes(16).toString("hex");
+    const slot = await createUploadSlot(replacementPath(uploadId, document.label));
+    return { uploadId, signedUrl: slot.signedUrl };
+  } catch (error) {
+    if (error instanceof AuthorizationError) return { error: "Accès non autorisé." };
+    console.error("[compte-candidat] Échec de préparation du remplacement:", error);
+    return { error: "Impossible de préparer l'envoi. Veuillez réessayer." };
+  }
+}
+
+export async function confirmDocumentReplacement(input: {
+  requestId: string;
+  documentId: string;
+  uploadId: string;
+}): Promise<CandidateActionState> {
+  // L'identifiant compose un chemin de stockage : seul le format généré par
+  // `prepareDocumentReplacement` est accepté, jamais un chemin arbitraire.
+  const uploadId = typeof input?.uploadId === "string" ? input.uploadId : "";
+  if (!REPLACEMENT_ID_PATTERN.test(uploadId)) {
+    return { error: "Envoi invalide. Veuillez recommencer." };
+  }
+
+  try {
+    const candidate = await requireVerifiedCandidate();
+    const document = await findReplaceableDocument(
+      candidate.email,
+      input.requestId,
+      input.documentId
+    );
+    if (!document) return { error: NOT_REPLACEABLE };
+
+    const stagedPath = replacementPath(uploadId, document.label);
+    const info = await inspectStoredFile(stagedPath);
+    const problem = !info
+      ? "Le fichier n'a pas été reçu. Veuillez réessayer."
+      : info.size > MAX_FILE_SIZE
+        ? "Le fichier dépasse 2 Mo."
+        : !info.isPdf
+          ? "Ce fichier n'est pas un PDF valide."
+          : null;
+    if (problem) {
+      await deleteStoragePaths([stagedPath]);
+      return { error: problem };
+    }
+
+    const previousPath =
+      document.storagePath ?? extractStoragePathFromUrl(document.url);
+    // Le nouveau fichier rejoint le dossier de l'ancien, pour que la purge et
+    // la suppression du dossier le retrouvent au même endroit.
+    const folder = previousPath
+      ? previousPath.slice(0, previousPath.lastIndexOf("/"))
+      : requestDocumentsFolder(document.request.id, document.request.createdAt);
+
+    const stored = await moveDocument(stagedPath, folder);
+
+    try {
+      await prisma.document.update({
+        where: { id: document.id },
+        data: {
+          url: stored.signedUrl,
+          storagePath: stored.storagePath,
+          // Date affichée à la RH : celle de la version en place.
+          createdAt: new Date(),
+        },
+      });
+    } catch (dbError) {
+      await deleteStoragePaths([stored.storagePath]);
+      throw dbError;
+    }
+
+    // L'ancien fichier n'est retiré qu'une fois le nouveau enregistré : un
+    // échec en cours de route ne laisse jamais le dossier sans pièce.
+    if (previousPath && previousPath !== stored.storagePath) {
+      await deleteStoragePaths([previousPath]);
+    }
+
+    await recordAudit(CANDIDATE_ACTOR, {
+      action: "request.document_replaced",
+      summary: `Document remplacé par le candidat : ${document.label}`,
+      targetType: "request",
+      targetId: document.request.id,
+    });
+
+    revalidatePath("/espace-candidat");
+    revalidatePath(`/admin/${document.request.id}`);
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof AuthorizationError) return { error: "Accès non autorisé." };
+    console.error("[compte-candidat] Échec du remplacement de document:", error);
+    return { error: "Le remplacement a échoué. Veuillez réessayer." };
+  }
 }

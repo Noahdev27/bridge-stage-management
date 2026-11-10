@@ -62,6 +62,24 @@ model User {
   passwordResetTokenHash      String?   @unique
   passwordResetTokenExpiresAt DateTime?
 
+  /// Code à 6 chiffres de « Mot de passe oublié » du back-office, stocké sous
+  /// forme d'empreinte HMAC (clé AUTH_SECRET). Un simple SHA-256 ne protégerait
+  /// pas un code aussi court : le million de valeurs possibles se teste en
+  /// quelques secondes à partir d'une copie de la base.
+  passwordResetCodeHash      String?
+  passwordResetCodeExpiresAt DateTime?
+  /// Essais déjà consommés sur le code courant. Au-delà de la limite, le code
+  /// est inutilisable et il faut en demander un nouveau : c'est ce qui rend un
+  /// code de 6 chiffres sûr face à la force brute.
+  passwordResetCodeAttempts  Int       @default(0)
+
+  /// Version des sessions du compte, recopiée dans le JWT à la connexion.
+  /// L'incrémenter (changement ou réinitialisation du mot de passe) invalide
+  /// toutes les sessions ouvertes : sans cela, un JWT reste valable jusqu'à
+  /// son expiration (30 jours), même après un changement de mot de passe
+  /// fait justement pour chasser un intrus.
+  sessionVersion Int @default(0)
+
   evaluations     RequestEvaluation[]
   tutoredRequests InternshipRequest[] @relation("TutorAssignments")
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { looksLikePdf, validatePdf } from "@/shared/validation/file";
 import { MAX_FILE_SIZE } from "@/shared/constants/domain";
 import { step1InfosSchema, step2ParcoursSchema } from "@/features/candidature/schema";
+import { staffResetConfirmSchema } from "@/features/reinitialisation-rh/schema";
 
 function fakeFile(name: string, type: string, size: number): File {
   const file = new File(["x"], name, { type });
@@ -88,5 +89,37 @@ describe("parcours et durée minimale", () => {
       startDate: "2020-01-01",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("code de réinitialisation du back-office", () => {
+  const base = {
+    email: "  RH@Bridge.test ",
+    password: "nouveau-mdp-1",
+    confirmPassword: "nouveau-mdp-1",
+  };
+
+  it("accepte un code copié avec une espace et normalise l'email", () => {
+    const result = staffResetConfirmSchema.parse({ ...base, code: "123 456" });
+    expect(result).toMatchObject({ code: "123456", email: "rh@bridge.test" });
+  });
+
+  it("garde les zéros de tête", () => {
+    expect(staffResetConfirmSchema.parse({ ...base, code: "000042" }).code).toBe("000042");
+  });
+
+  it.each(["12345", "1234567", "12a456", ""])("refuse le code « %s »", (code) => {
+    const result = staffResetConfirmSchema.safeParse({ ...base, code });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Le code comporte 6 chiffres.");
+  });
+
+  it("refuse deux mots de passe différents", () => {
+    const result = staffResetConfirmSchema.safeParse({
+      ...base,
+      code: "123456",
+      confirmPassword: "autre-chose",
+    });
+    expect(result.error?.issues[0].path).toEqual(["confirmPassword"]);
   });
 });

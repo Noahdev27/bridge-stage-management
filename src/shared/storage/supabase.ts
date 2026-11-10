@@ -170,12 +170,17 @@ export function extractStoragePathFromUrl(url: string): string | null {
   }
 }
 
+/** Dossier de stockage des pièces d'une candidature (rangées par mois de dépôt). */
+export function requestDocumentsFolder(requestId: string, createdAt: Date): string {
+  const datePrefix = `${createdAt.getFullYear()}/${String(createdAt.getMonth() + 1).padStart(2, "0")}`;
+  return `candidatures/${datePrefix}/${requestId}`;
+}
+
 export async function deleteRequestDocumentsFolder(
   requestId: string,
   createdAt: Date
 ): Promise<void> {
-  const datePrefix = `${createdAt.getFullYear()}/${String(createdAt.getMonth() + 1).padStart(2, "0")}`;
-  const folderPath = `candidatures/${datePrefix}/${requestId}`;
+  const folderPath = requestDocumentsFolder(requestId, createdAt);
 
   const { data, error } = await supabase.storage
     .from(DOCUMENTS_BUCKET)

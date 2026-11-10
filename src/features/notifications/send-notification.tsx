@@ -10,6 +10,9 @@ import TutorAssignedEmail from "@/features/notifications/templates/TutorAssigned
 import NewApplicationEmail from "@/features/notifications/templates/NewApplicationEmail";
 import EmailVerificationEmail from "@/features/notifications/templates/EmailVerificationEmail";
 import PasswordResetEmail from "@/features/notifications/templates/PasswordResetEmail";
+import StaffPasswordResetCodeEmail from "@/features/notifications/templates/StaffPasswordResetCodeEmail";
+import PasswordChangedEmail from "@/features/notifications/templates/PasswordChangedEmail";
+import { getAppUrl } from "@/shared/config/app-url";
 import TrackingCodeReminderEmail, {
   type TrackingCodeReminderItem,
 } from "@/features/notifications/templates/TrackingCodeReminderEmail";
@@ -118,6 +121,71 @@ export const notifyPasswordReset = async ({
   await safeSend({
     to,
     subject: "Réinitialisation de votre mot de passe - Bridge",
+    html,
+  });
+};
+
+export const notifyStaffPasswordResetCode = async ({
+  to,
+  name,
+  code,
+  validityMinutes,
+}: {
+  to: string;
+  name: string | null;
+  code: string;
+  validityMinutes: number;
+}) => {
+  const html = await render(
+    <StaffPasswordResetCodeEmail
+      name={name || "collègue"}
+      code={code}
+      validityMinutes={validityMinutes}
+    />
+  );
+  await safeSend({
+    to,
+    // Le code figure dans l'objet : il se lit dans la notification du
+    // téléphone sans ouvrir l'email.
+    subject: `${code} : votre code de réinitialisation - Bridge`,
+    html,
+  });
+};
+
+/**
+ * Alerte envoyée après tout changement ou réinitialisation de mot de passe :
+ * c'est le seul moyen pour le titulaire de remarquer qu'un tiers a pris la
+ * main sur son compte.
+ */
+export const notifyPasswordChanged = async ({
+  to,
+  name,
+  role,
+  method,
+}: {
+  to: string;
+  name: string | null;
+  role: string;
+  method: "change" | "reset";
+}) => {
+  const isStaff = role !== "CANDIDATE";
+  const changedAt = new Date().toLocaleString("fr-FR", {
+    timeZone: "Africa/Douala",
+    dateStyle: "long",
+    timeStyle: "short",
+  });
+  const html = await render(
+    <PasswordChangedEmail
+      name={name || (isStaff ? "collègue" : "Candidat")}
+      changedAt={changedAt}
+      method={method}
+      isStaff={isStaff}
+      recoveryUrl={`${getAppUrl()}${isStaff ? "/admin" : "/candidat"}/mot-de-passe-oublie`}
+    />
+  );
+  await safeSend({
+    to,
+    subject: "Votre mot de passe a été modifié - Bridge",
     html,
   });
 };

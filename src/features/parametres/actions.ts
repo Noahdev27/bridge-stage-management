@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import bcrypt from "bcryptjs";
 import { prisma } from "@/shared/db/prisma";
 import { AuthorizationError, requireStaff } from "@/shared/auth/guards";
-import { changePasswordSchema, updateProfileSchema } from "./schema";
+import { updateProfileSchema } from "./schema";
+import { changeOwnPassword } from "./password-change";
 import { recordAudit } from "@/shared/audit/audit";
 
 export type ParametresActionState = {
@@ -34,58 +34,19 @@ export async function changePassword(
 ): Promise<ParametresActionState> {
   try {
     const viewer = await requireStaff();
+    const { state, userId } = await changeOwnPassword(viewer.email, formData);
 
-    const parsed = changePasswordSchema.safeParse({
-      currentPassword: (formData.get("currentPassword") ?? "").toString(),
-      newPassword: (formData.get("newPassword") ?? "").toString(),
-      confirmPassword: (formData.get("confirmPassword") ?? "").toString(),
-    });
-
-    if (!parsed.success) {
-      return {
-        error: "Données invalides.",
-        fieldErrors: toFieldErrors(parsed.error.issues),
-      };
+    if (state.success) {
+      await recordAudit(viewer, {
+        action: "auth.password_changed",
+        summary: "Mot de passe modifié par son titulaire",
+        targetType: "user",
+        targetId: userId,
+      });
+      revalidatePath("/admin/parametres");
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: viewer.email },
-      select: { id: true, password: true },
-    });
-
-    if (!user) {
-      return { error: "Compte introuvable." };
-    }
-
-    const validCurrent = await bcrypt.compare(
-      parsed.data.currentPassword,
-      user.password
-    );
-
-    if (!validCurrent) {
-      return {
-        error: "Mot de passe actuel incorrect.",
-        fieldErrors: { currentPassword: "Mot de passe actuel incorrect." },
-      };
-    }
-
-    const hashedPassword = await bcrypt.hash(parsed.data.newPassword, 10);
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword },
-    });
-
-    await recordAudit(viewer, {
-      action: "auth.password_changed",
-      summary: "Mot de passe modifié par son titulaire",
-      targetType: "user",
-      targetId: user.id,
-    });
-
-    revalidatePath("/admin/parametres");
-
-    return { success: true };
+    return state;
   } catch (error) {
     if (error instanceof AuthorizationError) return UNAUTHORIZED;
     console.error("[parametres-actions] Erreur changement mot de passe:", error);

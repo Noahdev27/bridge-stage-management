@@ -9,6 +9,7 @@ import { EvaluationForm } from "@/features/demandes-admin/components/EvaluationF
 import { StatusActionBar } from "@/features/demandes-admin/components/StatusActionBar";
 import { TutorAssignForm } from "@/features/demandes-admin/components/TutorAssignForm";
 import { DocumentViewer } from "@/features/demandes-admin/components/DocumentViewer";
+import { DeleteCandidatureButton } from "@/features/demandes-admin/components/DeleteCandidatureButton";
 import { AttestationPanel } from "@/features/attestation/components/AttestationPanel";
 import { toDateInputValue } from "@/features/attestation/schema";
 import { StatusBadge } from "@/shared/ui/StatusBadge";
@@ -314,6 +315,22 @@ export default async function DetailAdminPage({ params }: DetailAdminPageProps) 
                 reference={candidature.attestationRef}
                 issuedAt={candidature.attestationIssuedAt}
               />
+              <div className="card bg-base-100 border border-error/30 shadow-sm">
+                <div className="card-body p-5 gap-3">
+                  <h2 className="card-title text-lg">Supprimer le dossier</h2>
+                  <p className="text-sm text-base-content/70">
+                    Doublon, demande d&apos;effacement du candidat, dossier de
+                    test : efface le dossier et tous ses documents.
+                  </p>
+                  <div>
+                    <DeleteCandidatureButton
+                      requestId={candidature.id}
+                      candidateName={`${profile.firstName} ${profile.lastName}`}
+                      hasAttestation={!!candidature.attestationRef}
+                    />
+                  </div>
+                </div>
+              </div>
             </>
           ) : (
             <>

@@ -26,6 +26,9 @@ export const AUDIT_ACTIONS = {
   "request.evaluated": { label: "Évaluation enregistrée", category: "dossiers" },
   "request.purged": { label: "Purge RGPD", category: "dossiers" },
   "request.withdrawn": { label: "Candidature retirée", category: "dossiers" },
+  "request.deleted": { label: "Dossier supprimé", category: "dossiers" },
+  "request.exported": { label: "Export des candidatures", category: "dossiers" },
+  "request.document_replaced": { label: "Document remplacé", category: "dossiers" },
 
   "attestation.period_saved": { label: "Période de stage saisie", category: "attestations" },
   "attestation.issued": { label: "Attestation délivrée", category: "attestations" },
@@ -50,6 +53,9 @@ export const AUDIT_ACTIONS = {
   "auth.login_success": { label: "Connexion", category: "securite" },
   "auth.login_failed": { label: "Échec de connexion", category: "securite" },
   "auth.password_changed": { label: "Mot de passe modifié", category: "securite" },
+  "auth.password_reset_requested": { label: "Code de réinitialisation envoyé", category: "securite" },
+  "auth.password_reset": { label: "Mot de passe réinitialisé", category: "securite" },
+  "auth.password_reset_locked": { label: "Code de réinitialisation bloqué", category: "securite" },
 } as const satisfies Record<string, { label: string; category: AuditCategory }>;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;

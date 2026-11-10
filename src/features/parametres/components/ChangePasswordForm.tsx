@@ -7,14 +7,27 @@ import { FormField } from "@/shared/ui/FormField";
 import { PasswordInput } from "@/shared/ui/PasswordInput";
 import { changePassword, type ParametresActionState } from "../actions";
 
-export function ChangePasswordForm() {
+type ChangePasswordAction = (
+  prev: ParametresActionState,
+  formData: FormData
+) => Promise<ParametresActionState>;
+
+/**
+ * Formulaire de changement de mot de passe, partagé par le back-office et
+ * l'espace candidat : seule l'action change, chacune vérifiant sa session.
+ */
+export function ChangePasswordForm({
+  action = changePassword,
+}: {
+  action?: ChangePasswordAction;
+}) {
   const formRef = useRef<HTMLFormElement>(null);
   const { showToast } = useToast();
 
   const [state, formAction, isPending] = useActionState<
     ParametresActionState,
     FormData
-  >(changePassword, {});
+  >(action, {});
 
   useEffect(() => {
     if (!state.success) return;
@@ -31,6 +44,11 @@ export function ChangePasswordForm() {
           <KeyRound className="w-5 h-5 text-primary" aria-hidden="true" />
           <h2 className="card-title text-lg">Changer mon mot de passe</h2>
         </div>
+
+        <p className="text-sm text-base-content/60 -mt-1">
+          Vos autres appareils seront déconnectés, et un email vous confirmera
+          le changement.
+        </p>
 
         <form action={formAction} ref={formRef} className="space-y-3">
           <FormField

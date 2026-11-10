@@ -142,6 +142,12 @@ export const RATE_LIMITS = {
   trackingLookupPerIp: { scope: "suivi", limit: 60, windowSeconds: 10 * 60 },
   /** Formulaires publics qui envoient un email (inscription, oubli, renvoi). */
   emailFormsPerIp: { scope: "email-form", limit: 20, windowSeconds: 60 * 60 },
+  /**
+   * Saisies de code de réinitialisation depuis une même adresse, tous comptes
+   * confondus : la limite de 5 essais par code protège un compte, celle-ci
+   * empêche de balayer plusieurs comptes à la fois.
+   */
+  resetCodeChecksPerIp: { scope: "reset-code", limit: 20, windowSeconds: 15 * 60 },
   /** Vérifications publiques d'attestation. */
   attestationCheckPerIp: { scope: "attestation-check", limit: 30, windowSeconds: 10 * 60 },
 } as const satisfies Record<string, RateLimitRule>;

@@ -94,12 +94,17 @@ export default async function AdminLoginPage({
               </div>
 
               <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium mb-1"
-                >
-                  Mot de passe
-                </label>
+                <div className="flex items-baseline justify-between gap-2 mb-1">
+                  <label htmlFor="password" className="block text-sm font-medium">
+                    Mot de passe
+                  </label>
+                  <Link
+                    href="/admin/mot-de-passe-oublie"
+                    className="text-xs link link-primary"
+                  >
+                    Mot de passe oublié ?
+                  </Link>
+                </div>
                 <PasswordInput id="password" name="password" required withIcon />
               </div>
 
